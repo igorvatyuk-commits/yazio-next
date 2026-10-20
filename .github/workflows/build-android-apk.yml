@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -42,7 +42,15 @@ jobs:
       - name: Prepare APK Asset
         run: |
           mkdir -p dist
-          cp android/app/build/outputs/apk/debug/*.apk dist/yazio-next.apk
+          echo "Listing all built files in outputs:"
+          find android/app/build/outputs -type f || true
+          APK_FILE=$(find android/app/build/outputs -type f -name "*.apk" | head -n 1)
+          if [ -z "$APK_FILE" ]; then
+            echo "ERROR: No APK found!"
+            exit 1
+          fi
+          echo "Found APK at: $APK_FILE"
+          cp "$APK_FILE" dist/yazio-next.apk
           ls -lh dist/yazio-next.apk
 
       - name: Upload APK as Workflow Artifact
