@@ -156,18 +156,28 @@ def startup_event():
 # ---------------------------------------------------------------------------
 # 1. WEB APP & HEALTH METADATA
 # ---------------------------------------------------------------------------
-WEB_APP_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "mobile",
-    "web_preview.html",
-)
+def _find_web_app_file() -> str:
+    candidates = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "mobile", "web_preview.html"),
+        os.path.join(os.path.dirname(__file__), "static", "web_preview.html"),
+        os.path.join(os.getcwd(), "mobile", "web_preview.html"),
+        os.path.join(os.getcwd(), "web_preview.html"),
+        os.path.abspath("mobile/web_preview.html"),
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return candidates[0]
+
+WEB_APP_PATH = _find_web_app_file()
 
 
 @app.get("/", include_in_schema=False)
 @app.get("/app", include_in_schema=False)
 def serve_mobile_web_app():
-    if os.path.exists(WEB_APP_PATH):
-        return FileResponse(WEB_APP_PATH, media_type="text/html")
+    web_path = _find_web_app_file()
+    if os.path.exists(web_path):
+        return FileResponse(web_path, media_type="text/html")
     return JSONResponse({"message": "YAZIO-Next API running. Open /docs for Swagger UI."})
 
 
