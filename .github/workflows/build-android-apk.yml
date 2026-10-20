@@ -32,26 +32,28 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee ../gradle_build.log
 
-      - name: Upload Build Log on Failure
-        if: failure()
+      - name: Upload Build Log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-failure-log
+          name: gradle-build-log
           path: gradle_build.log
 
       - name: Prepare APK Asset
         run: |
           mkdir -p dist
-          echo "Listing all built files in outputs:"
-          find android/app/build/outputs -type f || true
-          APK_FILE=$(find android/app/build/outputs -type f -name "*.apk" | head -n 1)
-          if [ -z "$APK_FILE" ]; then
-            echo "ERROR: No APK found!"
+          echo "=== SEARCHING FOR ALL APK FILES ==="
+          find . -name "*.apk"
+          APK_FILE=$(find . -name "*.apk" | head -n 1)
+          if [ -n "$APK_FILE" ]; then
+            echo "Found APK at: $APK_FILE"
+            cp -v "$APK_FILE" dist/yazio-next.apk
+            ls -lh dist/yazio-next.apk
+          else
+            echo "ERROR: No APK found! Listing android directory:"
+            find android -maxdepth 4 || true
             exit 1
           fi
-          echo "Found APK at: $APK_FILE"
-          cp "$APK_FILE" dist/yazio-next.apk
-          ls -lh dist/yazio-next.apk
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
