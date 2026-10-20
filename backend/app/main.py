@@ -11,6 +11,7 @@ Integrates:
 import os
 import secrets
 import sqlite3
+import time
 import json
 from datetime import date, datetime
 from typing import Optional, List, Dict, Any
@@ -68,6 +69,56 @@ def get_db_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def record_telemetry_event(
+    button_key: str,
+    button_label_ru: str,
+    target_value: Optional[str] = None,
+    data_source: str = "local",
+    duration_ms: float = 0.0,
+    status: str = "success",
+    user_id: int = 1,
+) -> None:
+    """Persist button click and barcode/search latency metrics into SQLite `telemetry_events`."""
+    try:
+        conn = get_db_connection()
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS telemetry_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL DEFAULT 1,
+                button_key TEXT NOT NULL,
+                button_label_ru TEXT NOT NULL,
+                target_value TEXT,
+                data_source TEXT NOT NULL DEFAULT 'local',
+                duration_ms REAL NOT NULL DEFAULT 0.0,
+                status TEXT NOT NULL DEFAULT 'success',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO telemetry_events (
+                user_id, button_key, button_label_ru, target_value,
+                data_source, duration_ms, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                button_key,
+                button_label_ru,
+                target_value,
+                data_source,
+                round(float(duration_ms), 2),
+                status,
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 
 def require_feature(user_id: int, feature_key: str, consume: bool = False) -> Dict[str, Any]:
@@ -492,17 +543,62 @@ def search_food(
     limit: int = 20,
     remote: bool = False,
 ):
+    t0 = time.perf_counter()
     results = food_service.search_local(query=query, limit=limit, fetch_remote=remote)
-    return {"query": query, "count": len(results), "items": results}
+    server_ms = round((time.perf_counter() - t0) * 1000.0, 2)
+    source = "openfoodfacts_live" if remote else "sqlite_cache"
+    if query.strip():
+        record_telemetry_event(
+            button_key="search_online_de" if remote else "search_local",
+            button_label_ru="🌐 Поиск в онлайн-базе DE (Open Food Facts)" if remote else "🔎 Поиск по локальной базе (SQLite)",
+            target_value=f"{query.strip()} ({len(results)} шт.)",
+            data_source=source,
+            duration_ms=server_ms,
+            status="success" if results else "not_found",
+        )
+    return {
+        "query": query,
+        "count": len(results),
+        "items": results,
+        "lookup_source": source,
+        "server_ms": server_ms,
+    }
 
 
 @app.get("/api/food/barcode/{barcode}")
 def scan_barcode(barcode: str, user_id: int = 1):
     require_feature(user_id, "barcode_scan")
+    t0 = time.perf_counter()
     product = food_service.lookup_barcode(barcode)
+    total_ms = round((time.perf_counter() - t0) * 1000.0, 2)
     if not product:
+        record_telemetry_event(
+            button_key="barcode_lookup",
+            button_label_ru="📷 Сканирование штрихкода (EAN)",
+            target_value=barcode,
+            data_source="openfoodfacts_live",
+            duration_ms=total_ms,
+            status="not_found",
+            user_id=user_id,
+        )
         raise HTTPException(status_code=404, detail=f"Barcode {barcode} not found in database or Open Food Facts")
-    return {"status": "found", "product": product}
+    lookup_source = product.get("_lookup_source", "sqlite_cache")
+    server_ms = product.get("_lookup_ms", total_ms)
+    record_telemetry_event(
+        button_key="barcode_lookup",
+        button_label_ru="📷 Сканирование штрихкода (EAN)",
+        target_value=f"{barcode} → {product.get('name', '')[:32]}",
+        data_source=lookup_source,
+        duration_ms=server_ms,
+        status="success",
+        user_id=user_id,
+    )
+    return {
+        "status": "found",
+        "product": product,
+        "lookup_source": lookup_source,
+        "server_ms": server_ms,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -743,6 +839,7 @@ class AIPhotoAnalyzeRequest(BaseModel):
 def scan_plate_with_gemini(req: AIPhotoAnalyzeRequest):
     # Gate: 3 free scans (shared 'ai_scans' quota), then PRO — configurable in paywall_config.json
     require_feature(req.user_id, "ai_photo_scan")
+    t0 = time.perf_counter()
 
     # Perform analysis strictly using gemini-3.5-flash with guard_prompt
     result = ai_service.analyze_meal_vision_or_text(
@@ -751,10 +848,21 @@ def scan_plate_with_gemini(req: AIPhotoAnalyzeRequest):
         image_base64=req.image_base64,
         mime_type=req.mime_type,
     )
+    server_ms = round((time.perf_counter() - t0) * 1000.0, 2)
+    record_telemetry_event(
+        button_key="ai_meal_scan",
+        button_label_ru="📸 AI-распознавание еды (Gemini 3.5 Flash)",
+        target_value=(req.dish_hint or "Фото тарелки")[:36],
+        data_source="gemini_ai",
+        duration_ms=server_ms,
+        status="success",
+        user_id=req.user_id,
+    )
 
     # Count the scan only after a successful analysis (failed AI calls cost the user nothing)
     usage = entitlements.check(req.user_id, "ai_photo_scan", consume=True, log_event=False)
     result["access"] = usage.to_dict()
+    result["server_ms"] = server_ms
     return result
 
 
@@ -885,3 +993,131 @@ def admin_reset_usage(user_id: int, x_admin_token: Optional[str] = Header(defaul
     conn.commit()
     conn.close()
     return {"status": "reset", "user_id": user_id}
+
+
+# ---------------------------------------------------------------------------
+# 10. TELEMETRY & PERFORMANCE DIAGNOSTICS (Button Clicks & Barcode/Search Speed)
+# ---------------------------------------------------------------------------
+class TelemetryEventRequest(BaseModel):
+    user_id: int = 1
+    button_key: str
+    button_label_ru: str
+    target_value: Optional[str] = None
+    data_source: str = "ui_action"
+    duration_ms: float = 0.0
+    status: str = "success"
+
+
+@app.post("/api/telemetry/event")
+def log_client_telemetry(req: TelemetryEventRequest):
+    """Logs any UI button click and client-side action timing."""
+    record_telemetry_event(
+        button_key=req.button_key,
+        button_label_ru=req.button_label_ru,
+        target_value=req.target_value,
+        data_source=req.data_source,
+        duration_ms=req.duration_ms,
+        status=req.status,
+        user_id=req.user_id,
+    )
+    return {"status": "logged"}
+
+
+@app.get("/api/telemetry/dashboard")
+def get_telemetry_dashboard():
+    """
+    Returns full testing analytics:
+    1. Most clicked buttons by testers (popularity ranking + avg latency ms).
+    2. Speed comparison by data source (SQLite local cache vs Open Food Facts API vs Gemini AI).
+    3. Recent barcode scans and searches with exact execution times.
+    """
+    conn = get_db_connection()
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS telemetry_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL DEFAULT 1,
+            button_key TEXT NOT NULL,
+            button_label_ru TEXT NOT NULL,
+            target_value TEXT,
+            data_source TEXT NOT NULL DEFAULT 'local',
+            duration_ms REAL NOT NULL DEFAULT 0.0,
+            status TEXT NOT NULL DEFAULT 'success',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    total_row = conn.execute("SELECT COUNT(*) AS cnt FROM telemetry_events").fetchone()
+    total_events = int(total_row["cnt"]) if total_row else 0
+
+    top_rows = conn.execute(
+        """
+        SELECT
+            button_key,
+            button_label_ru,
+            COUNT(*) AS clicks,
+            ROUND(AVG(duration_ms), 1) AS avg_ms,
+            ROUND(MIN(duration_ms), 1) AS min_ms,
+            ROUND(MAX(duration_ms), 1) AS max_ms
+        FROM telemetry_events
+        GROUP BY button_key, button_label_ru
+        ORDER BY clicks DESC, avg_ms ASC
+        """
+    ).fetchall()
+
+    top_buttons = []
+    for r in top_rows:
+        clicks = int(r["clicks"])
+        top_buttons.append({
+            "button_key": r["button_key"],
+            "button_label_ru": r["button_label_ru"],
+            "clicks": clicks,
+            "share_pct": round((clicks / total_events) * 100.0, 1) if total_events > 0 else 0.0,
+            "avg_ms": r["avg_ms"] or 0.0,
+            "min_ms": r["min_ms"] or 0.0,
+            "max_ms": r["max_ms"] or 0.0,
+        })
+
+    src_rows = conn.execute(
+        """
+        SELECT
+            data_source,
+            COUNT(*) AS count,
+            ROUND(AVG(duration_ms), 1) AS avg_ms,
+            ROUND(MIN(duration_ms), 1) AS min_ms,
+            ROUND(MAX(duration_ms), 1) AS max_ms
+        FROM telemetry_events
+        WHERE duration_ms > 0
+        GROUP BY data_source
+        ORDER BY avg_ms ASC
+        """
+    ).fetchall()
+
+    recent_rows = conn.execute(
+        """
+        SELECT
+            id, button_key, button_label_ru, target_value,
+            data_source, duration_ms, status, created_at
+        FROM telemetry_events
+        ORDER BY id DESC
+        LIMIT 30
+        """
+    ).fetchall()
+    conn.close()
+
+    return {
+        "total_events": total_events,
+        "top_buttons": top_buttons,
+        "source_comparison": [dict(r) for r in src_rows],
+        "recent_events": [dict(r) for r in recent_rows],
+    }
+
+
+@app.delete("/api/telemetry/clear")
+def clear_telemetry_events():
+    conn = get_db_connection()
+    conn.execute("DELETE FROM telemetry_events")
+    conn.commit()
+    conn.close()
+    return {"status": "cleared"}

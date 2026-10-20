@@ -194,3 +194,19 @@ CREATE TABLE IF NOT EXISTS feature_access_events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_feature_events_feature ON feature_access_events(feature_key, reason);
+
+-- 14. TELEMETRY & PERFORMANCE DIAGNOSTICS (Button Clicks & Barcode/Search Speed)
+CREATE TABLE IF NOT EXISTS telemetry_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL DEFAULT 1,
+    button_key TEXT NOT NULL,                  -- e.g. 'btn_barcode_open', 'barcode_lookup', 'search_local', 'search_online_de'
+    button_label_ru TEXT NOT NULL,             -- Human-readable label in Russian
+    target_value TEXT,                         -- Barcode, search query, or product name
+    data_source TEXT NOT NULL DEFAULT 'local', -- 'sqlite_cache', 'openfoodfacts_live', 'gemini_ai', 'ui_action'
+    duration_ms REAL NOT NULL DEFAULT 0.0,     -- Execution time in milliseconds
+    status TEXT NOT NULL DEFAULT 'success',    -- 'success', 'not_found', 'error'
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_telemetry_button ON telemetry_events(button_key);
+CREATE INDEX IF NOT EXISTS idx_telemetry_created ON telemetry_events(created_at DESC);
