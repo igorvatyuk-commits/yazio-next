@@ -436,6 +436,28 @@
           ⏳ Включаем камеру... Наведите на штрихкод упаковки
         </div>
 
+        <!-- Non-blocking Not Found & Quick Recovery Card -->
+        <div id="barcode-not-found-card" class="hidden bg-rose-950/80 border-2 border-rose-500/70 rounded-xl p-3 space-y-2 text-xs">
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="font-bold text-rose-300">⚠️ Товар не найден в базе</div>
+              <div id="not-found-code-label" class="text-[11px] font-mono text-slate-300 mt-0.5"></div>
+            </div>
+            <button onclick="dismissNotFoundCard()" class="text-xs text-slate-400 hover:text-white font-bold">✕</button>
+          </div>
+          <div class="text-[11px] text-slate-300">
+            Камера могла считать цифры под углом, либо в Open Food Facts ещё нет этой коробки.
+          </div>
+          <div class="grid grid-cols-2 gap-1.5 pt-1">
+            <button onclick="quickAssignEggs()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-1.5 px-2 rounded-lg text-[11px] text-center">
+              🥚 Это Яйца (Eier)
+            </button>
+            <button onclick="resumeScanningFromNotFound()" class="bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold py-1.5 px-2 rounded-lg text-[11px] text-center">
+              📷 Сканировать снова
+            </button>
+          </div>
+        </div>
+
         <!-- Speed & Cache Diagnostics Explanation -->
         <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 text-[11px] text-slate-300 space-y-1">
           <div class="font-bold text-sky-400">⚡ Почему скорость отличается:</div>
@@ -954,9 +976,12 @@
       if (code) lookupBarcode(code);
     }
 
+    let lastNotFoundBarcode = null;
+
     async function lookupBarcode(code) {
       const t0 = performance.now();
       try {
+        dismissNotFoundCard();
         showToast(`🔍 Поиск штрихкода ${code}...`);
         const res = await apiFetch(`/api/food/barcode/${encodeURIComponent(code)}?user_id=${USER_ID}`);
         const clientMs = Math.round(performance.now() - t0);
@@ -968,14 +993,59 @@
         openPortionPicker(res.product, { source: src, serverMs: srvMs, clientMs });
 
         if (src === 'sqlite_cache') {
-          showToast(`⚡ Найдено мгновенно за ${srvMs} мс (Кэш SQLite): ${res.product.name}`);
+          showToast(`⚡ Найдено за ${srvMs} мс (Кэш SQLite): ${res.product.name}`);
         } else {
-          showToast(`🌐 Загружено за ${srvMs} мс из Open Food Facts DE (сохранено в кэш!): ${res.product.name}`);
+          showToast(`🌐 Загружено за ${srvMs} мс из Open Food Facts DE: ${res.product.name}`);
         }
       } catch (e) {
-        isBarcodeLookupBusy = false;
-        alert(`Штрихкод ${code} не найден: ${e.message}`);
+        lastNotFoundBarcode = code;
+        showNotFoundCard(code);
       }
+    }
+
+    function showNotFoundCard(code) {
+      const card = document.getElementById('barcode-not-found-card');
+      const lbl = document.getElementById('not-found-code-label');
+      if (lbl) lbl.innerText = `Штрихкод: ${code}`;
+      if (card) card.classList.remove('hidden');
+      const statusEl = document.getElementById('barcode-camera-status');
+      if (statusEl) statusEl.innerText = '⚠️ Товар не найден. Выберите действие ниже:';
+    }
+
+    function dismissNotFoundCard() {
+      const card = document.getElementById('barcode-not-found-card');
+      if (card) card.classList.add('hidden');
+    }
+
+    function resumeScanningFromNotFound() {
+      dismissNotFoundCard();
+      isBarcodeLookupBusy = false;
+      const statusEl = document.getElementById('barcode-camera-status');
+      if (statusEl) statusEl.innerText = '🟢 Камера активна — наведите на штрихкод';
+      startCameraBarcodeScanner();
+    }
+
+    function quickAssignEggs() {
+      dismissNotFoundCard();
+      closeBarcodeModal();
+      switchTab('add');
+      // Staple eggs from database
+      const eggsProduct = {
+        product_id: lastNotFoundBarcode || 'staple_egg_fresh',
+        barcode: lastNotFoundBarcode || 'staple_egg_fresh',
+        name: 'Frische Eier / Свежие куриные яйца (Größe M)',
+        producer: 'Hofgut / Bio',
+        country_code: 'DE',
+        energy_kcal_100g: 143.0,
+        protein_g_100g: 13.0,
+        carbs_g_100g: 0.7,
+        sugar_g_100g: 0.4,
+        fat_g_100g: 9.5,
+        default_serving_label: '2 яйца (120g)',
+        default_serving_grams: 120.0,
+      };
+      openPortionPicker(eggsProduct);
+      showToast('🥚 Выбраны Яйца: укажите порцию (1-2-3 шт.) и нажмите «+ Записать»');
     }
 
     // ------------------------------------------------------------------
