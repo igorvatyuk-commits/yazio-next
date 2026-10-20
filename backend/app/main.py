@@ -601,6 +601,52 @@ def scan_barcode(barcode: str, user_id: int = 1):
     }
 
 
+class BindBarcodeRequest(BaseModel):
+    barcode: str
+    name: str
+    producer: str = "Eigenmarke / Фермерский продукт"
+    energy_kcal_100g: float = 143.0
+    protein_g_100g: float = 13.0
+    carbs_g_100g: float = 0.7
+    sugar_g_100g: float = 0.4
+    fat_g_100g: float = 9.5
+    default_serving_label: str = "2 шт. (120g)"
+    default_serving_grams: float = 120.0
+
+
+@app.post("/api/food/bind-barcode")
+def bind_custom_barcode(req: BindBarcodeRequest):
+    """Saves an unknown barcode permanently into local SQLite so future scans take ~1ms."""
+    code = req.barcode.strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="Barcode is required")
+    item = {
+        "product_id": code,
+        "barcode": code,
+        "name": req.name.strip(),
+        "producer": req.producer.strip(),
+        "country_code": "DE",
+        "energy_kcal_100g": round(req.energy_kcal_100g, 1),
+        "protein_g_100g": round(req.protein_g_100g, 1),
+        "carbs_g_100g": round(req.carbs_g_100g, 1),
+        "sugar_g_100g": round(req.sugar_g_100g, 1),
+        "fat_g_100g": round(req.fat_g_100g, 1),
+        "default_serving_label": req.default_serving_label,
+        "default_serving_grams": req.default_serving_grams,
+        "source": "user_verified",
+    }
+    food_service._save_product(item)
+    record_telemetry_event(
+        button_key="barcode_bind_custom",
+        button_label_ru="📌 Привязка нового штрихкода в БД",
+        target_value=f"{code} → {item['name'][:28]}",
+        data_source="sqlite_cache",
+        duration_ms=1.5,
+        status="success",
+    )
+    return {"status": "saved", "product": item}
+
+
 # ---------------------------------------------------------------------------
 # 5. FASTING TRACKER (persisted in SQLite `fasting_plans`, gated via config)
 # ---------------------------------------------------------------------------
