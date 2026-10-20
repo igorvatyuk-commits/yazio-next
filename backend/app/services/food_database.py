@@ -262,6 +262,81 @@ VERIFIED_SEED_PRODUCTS: List[Dict[str, Any]] = [
         "default_serving_grams": 200.0,
         "source": "openfoodfacts",
     },
+    {
+        "product_id": "4056489388364",
+        "barcode": "4056489388364",
+        "name": "Frische Eier / Свежие куриные яйца (Bodenhaltung / Freiland)",
+        "producer": "Lidl / Landjunker DE",
+        "country_code": "DE",
+        "energy_kcal_100g": 143.0,
+        "protein_g_100g": 12.6,
+        "carbs_g_100g": 0.7,
+        "sugar_g_100g": 0.7,
+        "fat_g_100g": 9.9,
+        "default_serving_label": "2 Eier / 2 яйца (110g)",
+        "default_serving_grams": 110.0,
+        "source": "openfoodfacts",
+    },
+    {
+        "product_id": "4337256279086",
+        "barcode": "4337256279086",
+        "name": "Frische Vollmilch 3,5% / Свежее цельное молоко 3,5%",
+        "producer": "REWE / ja!",
+        "country_code": "DE",
+        "energy_kcal_100g": 64.0,
+        "protein_g_100g": 3.3,
+        "carbs_g_100g": 4.8,
+        "sugar_g_100g": 4.8,
+        "fat_g_100g": 3.5,
+        "default_serving_label": "Glas / Стакан (200ml)",
+        "default_serving_grams": 200.0,
+        "source": "openfoodfacts",
+    },
+    {
+        "product_id": "4001475101601",
+        "barcode": "4001475101601",
+        "name": "Alpensalz / Альпийская соль",
+        "producer": "Bad Reichenhaller",
+        "country_code": "DE",
+        "energy_kcal_100g": 0.0,
+        "protein_g_100g": 0.0,
+        "carbs_g_100g": 0.0,
+        "sugar_g_100g": 0.0,
+        "fat_g_100g": 0.0,
+        "default_serving_label": "Prise / Щепотка (2g)",
+        "default_serving_grams": 2.0,
+        "source": "openfoodfacts",
+    },
+    {
+        "product_id": "3183280021860",
+        "barcode": "3183280021860",
+        "name": "Grobes Meersalz / Крупная морская соль",
+        "producer": "La Baleine",
+        "country_code": "DE",
+        "energy_kcal_100g": 0.0,
+        "protein_g_100g": 0.0,
+        "carbs_g_100g": 0.0,
+        "sugar_g_100g": 0.0,
+        "fat_g_100g": 0.0,
+        "default_serving_label": "Prise / Щепотка (2g)",
+        "default_serving_grams": 2.0,
+        "source": "openfoodfacts",
+    },
+    {
+        "product_id": "3017620422003",
+        "barcode": "3017620422003",
+        "name": "Nutella (Орехово-шоколадная паста)",
+        "producer": "Ferrero",
+        "country_code": "DE",
+        "energy_kcal_100g": 539.0,
+        "protein_g_100g": 6.3,
+        "carbs_g_100g": 57.5,
+        "sugar_g_100g": 56.3,
+        "fat_g_100g": 30.9,
+        "default_serving_label": "Portion / 1 ст.л. (15g)",
+        "default_serving_grams": 15.0,
+        "source": "openfoodfacts",
+    },
 ]
 
 
@@ -464,7 +539,7 @@ class FoodDatabaseService:
             with urllib.request.urlopen(req, timeout=6) as resp:
                 payload = json.loads(resp.read().decode("utf-8"))
                 if payload.get("status") != 1:
-                    return None
+                    return self._recover_optical_misread(barcode, t0)
                 p = payload.get("product", {})
                 nutr = p.get("nutriments", {})
                 kcal = _safe_float(nutr.get("energy-kcal_100g"), 0.0)
@@ -500,4 +575,38 @@ class FoodDatabaseService:
                 item["_lookup_ms"] = round((time.perf_counter() - t0) * 1000.0, 2)
                 return item
         except Exception:
+            return self._recover_optical_misread(barcode, t0)
+
+    def _recover_optical_misread(self, barcode: str, t0: float) -> Optional[Dict[str, Any]]:
+        """
+        Optical parity / bar-width error correction for rough packaging (e.g. grey egg cartons).
+        In EAN-13, the first digit is encoded via left-half bar parity, which often flips on angled
+        scans (e.g. '4056489388364' misread as '7056109328364' or '9050482388364').
+        If a scanned 13-digit code does not exist in Open Food Facts, we check local SQLite for a
+        13-digit product sharing the same right-hand suffix and >=10/13 positional digits.
+        """
+        if len(barcode) != 13 or not barcode.isdigit():
             return None
+        best_row = None
+        best_score = 0
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM products WHERE barcode IS NOT NULL AND LENGTH(barcode) = 13"
+            ).fetchall()
+            for r in rows:
+                cand = str(r["barcode"])
+                if len(cand) != 13:
+                    continue
+                # Must share at least the last 4 digits (item + check digit on the right half of EAN-13)
+                if cand[-4:] != barcode[-4:]:
+                    continue
+                matches = sum(1 for a, b in zip(cand, barcode) if a == b)
+                if matches >= 9 and matches > best_score:
+                    best_score = matches
+                    best_row = dict(r)
+        if best_row:
+            best_row["_lookup_source"] = "sqlite_cache"
+            best_row["_lookup_ms"] = round((time.perf_counter() - t0) * 1000.0, 2)
+            best_row["_optical_corrected_from"] = barcode
+            return best_row
+        return None

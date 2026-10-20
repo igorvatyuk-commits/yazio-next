@@ -987,16 +987,22 @@
         { facingMode: 'environment' },
         {
           fps: 25,
-          qrbox: { width: 260, height: 115 },
+          qrbox: { width: 265, height: 115 },
           aspectRatio: 1.5,
           disableFlip: true,
+          videoConstraints: {
+            facingMode: 'environment',
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            focusMode: 'continuous',
+          },
         },
         (decodedText) => {
           if (isBarcodeLookupBusy || !decodedText) return;
           const clean = decodedText.trim();
           if (!isValidGs1Barcode(clean)) return;
 
-          // 2-frame consensus (~40ms at 25fps) eliminates 99.9% of blurry motion misreads!
+          // 3-frame consensus (~100ms at 25fps) + HD stream eliminates blurry motion reads!
           if (clean === lastCandidateCode) {
             candidateHitCount += 1;
           } else {
@@ -1004,10 +1010,10 @@
             candidateHitCount = 1;
           }
 
-          if (candidateHitCount >= 2) {
+          if (candidateHitCount >= 3) {
             isBarcodeLookupBusy = true;
             if (navigator.vibrate) navigator.vibrate(40);
-            lookupBarcode(clean);
+            lookupBarcode(clean, true);
           }
         },
         () => {}
@@ -1028,12 +1034,13 @@
 
     function lookupBarcodeByInput() {
       const code = document.getElementById('barcode-manual-input').value.trim();
-      if (code) lookupBarcode(code);
+      if (code) lookupBarcode(code, false);
     }
 
     let lastNotFoundBarcode = null;
+    let cameraSilentRetryCount = 0;
 
-    async function lookupBarcode(code) {
+    async function lookupBarcode(code, fromCamera = false) {
       const t0 = performance.now();
       try {
         dismissNotFoundCard();
@@ -1042,18 +1049,32 @@
         const clientMs = Math.round(performance.now() - t0);
         const srvMs = res.server_ms !== undefined ? res.server_ms : clientMs;
         const src = res.lookup_source || 'sqlite_cache';
+        cameraSilentRetryCount = 0;
 
         await closeBarcodeModal();
         switchTab('add');
         openPortionPicker(res.product, { source: src, serverMs: srvMs, clientMs });
 
-        if (src === 'sqlite_cache') {
+        if (res.product._optical_corrected_from) {
+          showToast(`🎯 Автокоррекция полосок (${res.product._optical_corrected_from} → ${res.product.barcode}): ${res.product.name}`);
+        } else if (src === 'sqlite_cache') {
           showToast(`⚡ Найдено за ${srvMs} мс (Кэш SQLite): ${res.product.name}`);
         } else {
           showToast(`🌐 Загружено за ${srvMs} мс из Open Food Facts DE: ${res.product.name}`);
         }
       } catch (e) {
         lastNotFoundBarcode = code;
+        // If from camera and it's the first noisy misread while focusing, silently keep scanning!
+        if (fromCamera && cameraSilentRetryCount < 2) {
+          cameraSilentRetryCount += 1;
+          lastCandidateCode = '';
+          candidateHitCount = 0;
+          const statusEl = document.getElementById('barcode-camera-status');
+          if (statusEl) statusEl.innerText = `🎯 Фокусировка резкости полосок... Держите ровно (${cameraSilentRetryCount}/2)`;
+          setTimeout(() => { isBarcodeLookupBusy = false; }, 250);
+          return;
+        }
+        cameraSilentRetryCount = 0;
         showNotFoundCard(code);
       }
     }
