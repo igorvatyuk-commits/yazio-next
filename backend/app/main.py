@@ -18,7 +18,7 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from app.services.calorie_calculator import (
     build_personalized_plan,
@@ -230,6 +230,16 @@ def serve_mobile_web_app():
     if os.path.exists(web_path):
         return FileResponse(web_path, media_type="text/html")
     return JSONResponse({"message": "YAZIO-Next API running. Open /docs for Swagger UI."})
+
+
+@app.get("/download/android-apk", include_in_schema=False)
+@app.get("/download/yazio-next.apk", include_in_schema=False)
+def download_android_apk():
+    """Direct APK download link for Android testers."""
+    return RedirectResponse(
+        url="https://github.com/igorvatyuk-commits/yazio-next/releases/latest/download/yazio-next.apk",
+        status_code=302,
+    )
 
 
 @app.get("/api/health")

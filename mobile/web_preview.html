@@ -570,6 +570,11 @@
           <div>• <b>На iPhone (Safari):</b> нажмите «Поделиться» → <b>«На экран "Домой"» (Zum Home-Bildschirm)</b>.</div>
           <div>• <b>На Android (Chrome):</b> нажмите меню (⋮) → <b>«Установить приложение»</b>.</div>
         </div>
+
+        <!-- Direct Native Android APK Download -->
+        <a id="btn-download-apk" href="https://github.com/igorvatyuk-commits/yazio-next/releases/latest/download/yazio-next.apk" target="_blank" class="block w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs text-center shadow-lg transition">
+          🤖 Скачать нативное приложение Android (.APK)
+        </a>
       </div>
 
       <button onclick="closeInstallModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs">
@@ -939,6 +944,12 @@
     }
 
     function openBarcodeModal() {
+      // If running inside the Native Android APK, use the 0.05s Hardware Google ML Kit scanner!
+      if (window.AndroidBridge && typeof window.AndroidBridge.openNativeScanner === 'function') {
+        window.AndroidBridge.openNativeScanner();
+        return;
+      }
+
       isBarcodeLookupBusy = false;
       lastCandidateCode = '';
       candidateHitCount = 0;
