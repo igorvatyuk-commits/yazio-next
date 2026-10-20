@@ -22,6 +22,11 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
+      - name: Configure Android SDK Path
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+          cat android/local.properties
+
       - name: Build Android Debug APK
         run: |
           cd android
