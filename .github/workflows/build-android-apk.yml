@@ -3,9 +3,6 @@ name: Build Android APK (Google ML Kit)
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'android/**'
-      - '.github/workflows/build-android-apk.yml'
   workflow_dispatch:
 
 permissions:
