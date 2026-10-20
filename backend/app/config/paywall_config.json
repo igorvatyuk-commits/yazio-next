@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "updated_at": "2026-10-20T14:15:00Z",
+  "mode": "beta_all_open",
+  "_help_ru": "mode: beta_all_open = бета, всё открыто (доступ только записывается в статистику); production = замки работают. tier: free = бесплатно, limited = N бесплатных использований (free_limit), потом PRO; pro = только PRO. Файл перечитывается автоматически, перезапуск сервера не нужен.",
+  "features": {
+    "diary_logging": {
+      "tier": "free",
+      "name_ru": "Дневник питания и ручной ввод",
+      "name_de": "Ernährungstagebuch",
+      "note": "Основной цикл приложения. Не закрывать."
+    },
+    "food_search": {
+      "tier": "free",
+      "name_ru": "Поиск продуктов",
+      "name_de": "Lebensmittelsuche",
+      "note": "Основной цикл приложения. Не закрывать."
+    },
+    "barcode_scan": {
+      "tier": "free",
+      "name_ru": "Сканер штрихкодов",
+      "name_de": "Barcode-Scanner",
+      "note": "MyFitnessPal закрыл сканер и получил волну негатива. Наш козырь."
+    },
+    "plan_tomorrow": {
+      "tier": "free",
+      "name_ru": "Запись еды на завтра",
+      "name_de": "Mahlzeiten für morgen planen",
+      "note": "YAZIO закрыл эту функцию и получил бунт на Reddit. Наше отличие."
+    },
+    "water_weight_tracking": {
+      "tier": "free",
+      "name_ru": "Трекер воды и веса",
+      "name_de": "Wasser- und Gewichtstracker"
+    },
+    "ai_photo_scan": {
+      "tier": "limited",
+      "free_limit": 3,
+      "quota_key": "ai_scans",
+      "name_ru": "AI-распознавание еды по фото",
+      "name_de": "KI-Foto-Erkennung",
+      "note": "Стоит денег (Gemini). Общий лимит с голосовым вводом."
+    },
+    "ai_voice_text": {
+      "tier": "limited",
+      "free_limit": 3,
+      "quota_key": "ai_scans",
+      "name_ru": "AI-ввод голосом и текстом",
+      "name_de": "KI-Sprach- und Texteingabe",
+      "note": "Делит лимит ai_scans с фото-сканером."
+    },
+    "fasting_basic": {
+      "tier": "free",
+      "name_ru": "Голодание 12:12 и 14:10",
+      "name_de": "Intervallfasten 12:12 / 14:10"
+    },
+    "fasting_16_8": {
+      "tier": "free",
+      "ab_test_candidate": true,
+      "name_ru": "Голодание 16:8",
+      "name_de": "Intervallfasten 16:8",
+      "note": "YAZIO закрывает 16:8. Кандидат для A/B-теста free vs pro."
+    },
+    "fasting_advanced": {
+      "tier": "pro",
+      "name_ru": "Голодание 18:6, 20:4, OMAD и свой протокол",
+      "name_de": "Intervallfasten 18:6, 20:4, OMAD"
+    },
+    "food_rating": {
+      "tier": "pro",
+      "ab_test_candidate": true,
+      "name_ru": "Рейтинг полезности продукта",
+      "name_de": "Lebensmittel-Bewertung",
+      "note": "Кандидат для A/B-теста: может быть сильным поводом купить PRO."
+    },
+    "custom_macros": {
+      "tier": "pro",
+      "name_ru": "Свои проценты БЖУ, кето и low-carb",
+      "name_de": "Eigene Makro-Ziele"
+    },
+    "analytics_micronutrients": {
+      "tier": "pro",
+      "name_ru": "Аналитика, тренды и микронутриенты",
+      "name_de": "Analysen und Mikronährstoffe"
+    },
+    "recipes_basic": {
+      "tier": "free",
+      "name_ru": "Базовые рецепты",
+      "name_de": "Basis-Rezepte"
+    },
+    "recipes_full": {
+      "tier": "pro",
+      "name_ru": "Полный каталог рецептов",
+      "name_de": "Alle Rezepte"
+    },
+    "grocery_list": {
+      "tier": "pro",
+      "name_ru": "Список покупок",
+      "name_de": "Einkaufsliste"
+    },
+    "doctor_llm": {
+      "tier": "pro",
+      "name_ru": "AI-разбор рациона (Doctor LLM)",
+      "name_de": "KI-Ernährungsanalyse",
+      "note": "Самая дорогая функция (gemini-3.1-pro-preview)."
+    }
+  }
+}

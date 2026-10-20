@@ -1,0 +1,199 @@
+{
+  "version": "1.0.0",
+  "source": "Derived from captured YAZIO onboarding XML dumps & screenshots (01_onboarding_goal through rec_125)",
+  "steps": [
+    {
+      "step_id": "01_main_goal",
+      "type": "single_select",
+      "field": "overall_goal",
+      "title": {
+        "de": "Was ist dein Hauptziel?",
+        "en": "What’s your main goal?",
+        "ru": "Какова ваша главная цель?"
+      },
+      "options": [
+        { "id": "lose_weight", "de": "Abnehmen", "en": "Lose weight", "ru": "Похудеть" },
+        { "id": "eat_healthier", "de": "Gesünder ernähren (ohne Abnehmen)", "en": "Eat healthier without losing weight", "ru": "Питаться здоровее без похудения" },
+        { "id": "build_muscle", "de": "Muskeln aufbauen", "en": "Build muscle", "ru": "Набрать мышечную массу" },
+        { "id": "gain_weight", "de": "Zunehmen", "en": "Gain weight", "ru": "Набрать вес" }
+      ]
+    },
+    {
+      "step_id": "02_gender",
+      "type": "binary_select",
+      "field": "gender",
+      "title": {
+        "de": "Was ist dein biologisches Geschlecht?",
+        "en": "What's your sex?",
+        "ru": "Укажите ваш пол"
+      },
+      "subtitle": {
+        "de": "Da die wissenschaftliche Formel (Mifflin-St Jeor) zur Berechnung des Kalorienbedarfs vom Geschlecht abhängt, benötigen wir diese Angabe.",
+        "en": "Since the formula for an accurate calorie calculation differs based on sex, we need this information to calculate your daily calorie goal.",
+        "ru": "Формула расчёта базового обмена веществ (Миффлина — Сан-Жеора) зависит от пола."
+      },
+      "options": [
+        { "id": "female", "de": "Weiblich", "en": "Female", "ru": "Женский" },
+        { "id": "male", "de": "Männlich", "en": "Male", "ru": "Мужской" }
+      ]
+    },
+    {
+      "step_id": "03_motivation_why",
+      "type": "multi_select",
+      "field": "motivation_reasons",
+      "title": {
+        "de": "Warum möchtest du dein Ziel erreichen?",
+        "en": "Why do you want to lose weight?",
+        "ru": "Почему вы хотите достичь этой цели?"
+      },
+      "options": [
+        { "id": "confidence", "de": "Mich selbstbewusster fühlen", "en": "To feel more confident", "ru": "Чувствовать себя увереннее" },
+        { "id": "health", "de": "Meine allgemeine Gesundheit verbessern", "en": "To improve my overall health", "ru": "Улучшить общее здоровье" },
+        { "id": "fitness", "de": "Meine Fitness steigern", "en": "To increase my fitness level", "ru": "Повысить уровень физической формы" },
+        { "id": "special_event", "de": "Für ein besonderes Ereignis", "en": "To prepare for a special event", "ru": "Подготовиться к важному событию" }
+      ]
+    },
+    {
+      "step_id": "04_affirmation_yoyo",
+      "type": "info_card",
+      "title": {
+        "de": "Strenge Diäten führen oft zum Jo-Jo-Effekt.",
+        "en": "Restrictive dieting can cause a yo-yo effect.",
+        "ru": "Жёсткие диеты приводят к эффекту йо-йо."
+      },
+      "subtitle": {
+        "de": "Mit uns isst du weiter, was dir schmeckt — keine Verbote, sondern eine nachhaltige Kalorienbilanz, die zu deinem Alltag passt.",
+        "en": "With us, you can eat what you want. No more giving up foods or following complex rules.",
+        "ru": "Никаких строгих запретов: вы едите любимые продукты в рамках комфортного баланса калорий."
+      }
+    },
+    {
+      "step_id": "05_past_tracking",
+      "type": "single_select",
+      "field": "past_app",
+      "title": {
+        "de": "Hast du schon einmal Kalorien gezählt?",
+        "en": "Have you ever tracked calories before?",
+        "ru": "Вы когда-нибудь считали калории раньше?"
+      },
+      "options": [
+        { "id": "used_yazio_or_mfp", "de": "Ja, mit einer App (z.B. YAZIO, MyFitnessPal, FatSecret)", "en": "Yes, using an app (Yazio, MFP, FatSecret)", "ru": "Да, в приложении (YAZIO, FatSecret, MFP)" },
+        { "id": "never", "de": "Nein, das ist mein erstes Mal", "en": "No, never tracked before", "ru": "Нет, это мой первый раз" }
+      ]
+    },
+    {
+      "step_id": "06_ai_intro",
+      "type": "feature_highlight",
+      "title": {
+        "de": "Smarter tracken mit KI — in 3 Sekunden",
+        "en": "Track smarter with AI",
+        "ru": "Умный трекинг с ИИ за 3 секунды"
+      },
+      "subtitle": {
+        "de": "Mach einfach ein Foto von deinem Teller oder sprich deine Mahlzeit ein — unsere KI erkennt Kalorien & Makros sofort. Ohne nervige Pop-ups!",
+        "en": "Snap a photo or speak your meal and get instant nutrition info with AI—no manual entry or annoying pop-ups.",
+        "ru": "Просто сфотографируйте тарелку или назовите блюдо голосом — ИИ мгновенно посчитает КБЖУ без ручного поиска и навязчивых мультиков."
+      }
+    },
+    {
+      "step_id": "07_fasting_interest",
+      "type": "single_select",
+      "field": "fasting_interest",
+      "title": {
+        "de": "Hast du schon einmal Intervallfasten ausprobiert?",
+        "en": "Have you ever tried intermittent fasting?",
+        "ru": "Пробовали ли вы интервальное голодание?"
+      },
+      "options": [
+        { "id": "yes_liked", "de": "Ja, und es hat mir gefallen (z.B. 16:8)", "en": "Yes, I liked it.", "ru": "Да, мне понравилось (например, 16:8)" },
+        { "id": "want_to_try", "de": "Nein, aber ich möchte es testen", "en": "No, but I’d like to try it.", "ru": "Нет, но хочу попробовать" },
+        { "id": "no_interest", "de": "Nein, nur Kalorien tracken", "en": "No, I’m not interested.", "ru": "Нет, интересует только подсчёт калорий" }
+      ]
+    },
+    {
+      "step_id": "08_biometrics_birth_height_weight",
+      "type": "biometrics_input",
+      "fields": ["birth_date", "height_cm", "current_weight_kg", "target_weight_kg"],
+      "defaults": {
+        "birth_date": "1969-04-17",
+        "height_cm": 170,
+        "current_weight_kg": 77.1,
+        "target_weight_kg": 74.0
+      },
+      "title": {
+        "de": "Deine Körperdaten & dein Wunschgewicht",
+        "en": "Your body metrics & goal weight",
+        "ru": "Ваши параметры и желаемый вес"
+      }
+    },
+    {
+      "step_id": "09_diet_preference",
+      "type": "single_select",
+      "field": "diet_type",
+      "title": {
+        "de": "Befolgst du eine bestimmte Ernährungsweise?",
+        "en": "Do you follow a specific diet?",
+        "ru": "Придерживаетесь ли вы особого типа питания?"
+      },
+      "options": [
+        { "id": "classic", "de": "Klassisch (Ausgewogen)", "en": "Classic", "ru": "Классическое (Сбалансированное)" },
+        { "id": "high_protein", "de": "High Protein (Eiweißreich)", "en": "High Protein", "ru": "Высокобелковое (High Protein)" },
+        { "id": "low_carb", "de": "Low Carb", "en": "Low Carb", "ru": "Низкоуглеводное (Low Carb)" },
+        { "id": "pescatarian", "de": "Pescetarisch", "en": "Pescatarian", "ru": "Пескетарианство" },
+        { "id": "vegetarian", "de": "Vegetarisch", "en": "Vegetarian", "ru": "Вегетарианство" },
+        { "id": "vegan", "de": "Vegan", "en": "Vegan", "ru": "Веганство" }
+      ]
+    },
+    {
+      "step_id": "10_activity_and_schedule",
+      "type": "single_select",
+      "field": "activity_degree",
+      "title": {
+        "de": "Wie aktiv bist du im Alltag?",
+        "en": "How active are you in your daily routine?",
+        "ru": "Насколько вы активны в течение дня?"
+      },
+      "options": [
+        { "id": "sedentary", "de": "Überwiegend sitzend (Bürojob)", "en": "Mostly seated (Office job)", "ru": "Сидячая работа (офис)" },
+        { "id": "lightly_active", "de": "Leicht aktiv (Gelegentliche Bewegung)", "en": "Lightly active", "ru": "Лёгкая активность (прогулки)" },
+        { "id": "moderately_active", "de": "Mäßig aktiv (Regelmäßige Spaziergänge / Sport)", "en": "Moderately active", "ru": "Умеренная активность (ходьба / спорт)" },
+        { "id": "very_active", "de": "Sehr aktiv (Körperliche Arbeit / täglicher Sport)", "en": "Very active", "ru": "Высокая активность (ежедневный спорт)" }
+      ]
+    },
+    {
+      "step_id": "11_weekend_buffer",
+      "type": "single_select",
+      "field": "weekend_buffer_mode",
+      "title": {
+        "de": "Noch eine Sache: Isst du am Wochenende gerne etwas mehr?",
+        "en": "Just one more thing: Do you eat a bit more on the weekends?",
+        "ru": "Ещё одна деталь: любите ли вы поесть чуть вкуснее на выходных?"
+      },
+      "subtitle": {
+        "de": "Wir erhöhen dein Kalorienziel an deinen Wunschtagen automatisch, damit du das Wochenende ohne schlechtes Gewissen genießen kannst!",
+        "en": "Your calorie goals will be slightly higher on Saturdays and Sundays than on other days.",
+        "ru": "Мы автоматически выделим калорийный буфер на выходные, чтобы вы отдыхали без чувства вины и срывов!"
+      },
+      "options": [
+        { "id": "sat_sun", "de": "Ja, Samstag und Sonntag", "en": "Saturdays and Sundays", "ru": "Да, в субботу и воскресенье" },
+        { "id": "fri_sat_sun", "de": "Freitag, Samstag und Sonntag", "en": "Fridays, Saturdays and Sundays", "ru": "В пятницу, субботу и воскресенье" },
+        { "id": "fri_sat", "de": "Freitag und Samstag", "en": "Fridays and Saturdays", "ru": "В пятницу и субботу" },
+        { "id": "none", "de": "Nein, jeden Tag gleich", "en": "No, keep every day the same", "ru": "Нет, одинаковая норма каждый день" }
+      ]
+    },
+    {
+      "step_id": "12_plan_result_and_paywall",
+      "type": "plan_summary_and_paywall",
+      "title": {
+        "de": "Wir schätzen, dass du 74,0 kg bis zum 22. November erreichst!",
+        "en": "We estimate you can reach 74.0 kg by November 22!",
+        "ru": "По нашему расчёту, вы достигнете 74.0 кг к 22 ноября!"
+      },
+      "medical_disclaimer": {
+        "de": "Hinweis: Die Berechnung basiert auf der wissenschaftlich validierten Mifflin-St Jeor-Gleichung sowie den Referenzwerten der DGE und WHO. Kein Ersatz für ärztlichen Rat.",
+        "en": "Note: Calculations are based on the peer-reviewed Mifflin-St Jeor equation and WHO/USDA dietary guidelines. Not medical advice.",
+        "ru": "Расчёт основан на научно признанной формуле Миффлина — Сан-Жеора и рекомендациях ВОЗ/DGE. Не заменяет консультацию врача."
+      }
+    }
+  ]
+}

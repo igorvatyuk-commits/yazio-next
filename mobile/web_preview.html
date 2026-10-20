@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="YAZIO-Next">
+  <meta name="theme-color" content="#0f172a">
+  <title>YAZIO-Next (Боевой режим RU + DE)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    body { background-color: #020617; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-start sm:justify-center min-h-screen sm:p-4 text-slate-100">
+
+  <!-- Top Tester & Server Control Bar -->
+  <div class="w-full max-w-[430px] px-3 py-2 bg-slate-900 border-b sm:border border-slate-700/80 sm:rounded-2xl sm:mb-2 flex items-center justify-between text-xs shadow-lg">
+    <div class="flex items-center gap-1.5">
+      <span id="server-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+      <button onclick="toggleAccessMode()" id="btn-access-mode" class="px-2 py-1 rounded-lg font-bold text-[11px] bg-emerald-950 border border-emerald-500 text-emerald-300 transition">
+        <span id="access-mode-label">🟢 Бета (Всё открыто)</span>
+      </button>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <button onclick="openInstallModal()" class="px-2 py-1 rounded-lg font-bold text-[11px] bg-indigo-950 border border-indigo-500 text-indigo-200 hover:bg-indigo-900 transition">
+        📲 На телефон
+      </button>
+      <button onclick="openUsageModal()" class="px-2 py-1 rounded-lg font-bold text-[11px] bg-slate-800 border border-slate-600 text-sky-300 hover:bg-slate-700 transition">
+        📊 Статистика
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile App Container -->
+  <div class="relative w-full max-w-[430px] h-[calc(100vh-44px)] sm:h-[850px] bg-slate-900 sm:border-4 border-slate-700 sm:rounded-[40px] shadow-2xl overflow-hidden flex flex-col">
+
+    <!-- Status / Header Bar -->
+    <div class="px-4 py-2 flex justify-between items-center text-xs text-slate-400 border-b border-slate-800/80 shrink-0">
+      <span id="status-date-label" class="font-bold text-slate-200">YAZIO-Next • DE/RU</span>
+      <span id="api-status-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-700/50">API: Подключено</span>
+    </div>
+
+    <!-- Non-intrusive Toast Notification -->
+    <div id="beta-toast" class="hidden absolute top-11 left-3 right-3 bg-slate-950/95 border border-emerald-400 text-emerald-200 px-3 py-2 rounded-xl text-xs z-40 shadow-xl flex items-center justify-between">
+      <span id="beta-toast-text">Готово</span>
+      <button onclick="hideToast()" class="text-emerald-400 font-bold ml-2">✕</button>
+    </div>
+
+    <!-- Scrollable Screen Content -->
+    <div id="screen-container" class="flex-1 overflow-y-auto px-4 pb-24 pt-3 hide-scrollbar">
+
+      <!-- ================================================================== -->
+      <!-- TAB 1: DIARY (ДНЕВНИК / TAGEBUCH)                                  -->
+      <!-- ================================================================== -->
+      <div id="tab-diary" class="space-y-3.5">
+        <!-- Date Switcher (Yesterday / Today / Tomorrow FREE) -->
+        <div class="flex gap-1.5 overflow-x-auto hide-scrollbar">
+          <button onclick="setDayOffset(-1)" id="btn-day--1" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 whitespace-nowrap">
+            Вчера (Gestern)
+          </button>
+          <button onclick="setDayOffset(0)" id="btn-day-0" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500 text-slate-950 whitespace-nowrap">
+            Сегодня (Heute)
+          </button>
+          <button onclick="setDayOffset(1)" id="btn-day-1" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 whitespace-nowrap">
+            Завтра (Morgen) 🔓
+          </button>
+        </div>
+
+        <!-- Calorie & Macro Summary Card -->
+        <div class="bg-slate-800/90 border border-slate-700/60 rounded-2xl p-4 space-y-3">
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-sm text-slate-200">Суточный баланс <span class="text-xs text-slate-400 font-normal">(Tagesbilanz)</span></span>
+            <span id="diary-date-iso" class="text-[11px] text-slate-400 font-mono"></span>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <div class="w-24 h-24 rounded-full border-4 border-emerald-500 flex flex-col items-center justify-center shrink-0">
+              <span id="calorie-remaining" class="text-xl font-extrabold text-emerald-400">1,838</span>
+              <span class="text-[10px] text-slate-400">ккал осталось</span>
+              <span class="text-[9px] text-slate-500">(kcal übrig)</span>
+            </div>
+            <div class="text-xs space-y-1.5 flex-1">
+              <div class="text-slate-200">
+                Съедено: <b id="calorie-eaten" class="text-white">0</b> / <span id="calorie-goal">1838</span> ккал
+              </div>
+              <div class="space-y-1 pt-1 border-t border-slate-700">
+                <div class="flex justify-between text-[11px]">
+                  <span class="text-slate-400">Углеводы (Carbs):</span>
+                  <span class="text-slate-200 font-semibold"><span id="macro-c">0</span> / <span id="goal-c">224</span> г</span>
+                </div>
+                <div class="flex justify-between text-[11px]">
+                  <span class="text-slate-400">Белки (Eiweiß):</span>
+                  <span class="text-slate-200 font-semibold"><span id="macro-p">0</span> / <span id="goal-p">90</span> г</span>
+                </div>
+                <div class="flex justify-between text-[11px]">
+                  <span class="text-slate-400">Жиры (Fett):</span>
+                  <span class="text-slate-200 font-semibold"><span id="macro-f">0</span> / <span id="goal-f">59</span> г</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 Meal Cards (Breakfast, Lunch, Dinner, Snack) -->
+        <div id="meals-container" class="space-y-2.5"></div>
+
+        <!-- Real Water Tracker (8 glasses * 250ml saved in SQLite) -->
+        <div class="bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 space-y-2">
+          <div class="flex justify-between items-center text-xs">
+            <span class="font-bold text-slate-200">Трекер воды <span class="text-slate-400 font-normal">(Wassertracker)</span></span>
+            <span id="water-label" class="text-sky-400 font-semibold">0 / 2000 мл</span>
+          </div>
+          <div id="water-glasses-row" class="flex justify-between gap-1"></div>
+        </div>
+
+        <!-- Real Weight Tracker Widget (Saved in SQLite weight_logs) -->
+        <div class="bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 flex items-center justify-between gap-2">
+          <div>
+            <div class="font-bold text-xs text-slate-200">Текущий вес <span class="text-slate-400 font-normal">(Gewicht)</span></div>
+            <div class="text-[11px] text-slate-400">Сохраняется в базу данных</div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <input id="diary-weight-input" type="number" step="0.1" value="75.0" class="w-20 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm text-center font-bold text-white" />
+            <span class="text-xs text-slate-400">кг</span>
+            <button onclick="saveWeightFromDiary()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-2.5 py-1.5 rounded-lg">
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================== -->
+      <!-- TAB 2: ADD FOOD (ДОБАВЛЕНИЕ ЕДЫ: ПОИСК, ШТРИХКОД, AI ФОТО)         -->
+      <!-- ================================================================== -->
+      <div id="tab-add" class="hidden space-y-3.5">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-bold text-white">Добавить еду (Essen)</h2>
+          <select id="meal-selector" onchange="currentMeal=this.value" class="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-sky-400 font-bold">
+            <option value="breakfast">Завтрак (Frühstück)</option>
+            <option value="lunch">Обед (Mittagessen)</option>
+            <option value="dinner">Ужин (Abendessen)</option>
+            <option value="snack">Перекус (Snacks)</option>
+          </select>
+        </div>
+
+        <!-- 2 Real Action Buttons: AI Camera/Text & Barcode Scanner -->
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="openAiScannerModal()" class="bg-slate-800 border border-emerald-500/60 hover:border-emerald-400 p-3 rounded-xl text-center space-y-0.5 transition">
+            <div class="text-2xl">📸</div>
+            <div class="font-bold text-xs text-slate-100">AI-сканер (Фото / Текст)</div>
+            <div id="ai-scans-badge" class="text-[10px] text-emerald-400 font-semibold">Gemini 3.5 Flash</div>
+          </button>
+          <button onclick="openBarcodeModal()" class="bg-slate-800 border border-sky-500/50 hover:border-sky-400 p-3 rounded-xl text-center space-y-0.5 transition">
+            <div class="text-2xl">🔍</div>
+            <div class="font-bold text-xs text-slate-100">Сканер штрихкода</div>
+            <div class="text-[10px] text-sky-400 font-semibold">Камера + База EAN</div>
+          </button>
+        </div>
+
+        <!-- Real Live Search Bar -->
+        <div class="flex gap-1.5">
+          <input
+            id="food-search-input"
+            type="text"
+            oninput="performFoodSearch(false)"
+            placeholder="Поиск: Банан, Skyr, Творог, Лосось, Хлеб..."
+            class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+          />
+          <button onclick="performFoodSearch(true)" title="Искать в онлайн-базе Open Food Facts Германия" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 px-3 rounded-xl text-xs text-sky-300 font-bold shrink-0">
+            🌐 Онлайн DE
+          </button>
+        </div>
+
+        <!-- Selected Product Gram & Portion Picker -->
+        <div id="portion-picker" class="hidden bg-slate-800 border-2 border-emerald-500 rounded-2xl p-4 space-y-3 shadow-lg">
+          <div class="flex justify-between items-start">
+            <div>
+              <div id="picker-name" class="font-bold text-sm text-white">Продукт</div>
+              <div id="picker-producer" class="text-[11px] text-slate-400"></div>
+            </div>
+            <button onclick="closePortionPicker()" class="text-xs text-slate-400 hover:text-white">✕</button>
+          </div>
+
+          <!-- Gram input & quick gram buttons -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-slate-300 font-semibold">Количество (в граммах / мл):</span>
+              <div class="flex items-center gap-1">
+                <input id="picker-grams-input" type="number" min="1" max="2000" value="150" oninput="recalcPickerMacros()" class="w-20 bg-slate-900 border border-emerald-500 rounded-lg px-2 py-1 text-center font-bold text-white text-sm" />
+                <span class="text-slate-400">г</span>
+              </div>
+            </div>
+            <div class="flex gap-1.5">
+              <button onclick="setPickerGrams(50)" class="flex-1 bg-slate-700 hover:bg-slate-600 py-1 rounded text-[11px]">50г</button>
+              <button onclick="setPickerGrams(100)" class="flex-1 bg-slate-700 hover:bg-slate-600 py-1 rounded text-[11px]">100г</button>
+              <button onclick="setPickerGrams(150)" class="flex-1 bg-slate-700 hover:bg-slate-600 py-1 rounded text-[11px]">150г</button>
+              <button onclick="setPickerGrams(200)" class="flex-1 bg-slate-700 hover:bg-slate-600 py-1 rounded text-[11px]">200г</button>
+              <button onclick="setPickerGrams(250)" class="flex-1 bg-slate-700 hover:bg-slate-600 py-1 rounded text-[11px]">250г</button>
+            </div>
+          </div>
+
+          <!-- Live Macro Breakdown for Selected Grams -->
+          <div class="grid grid-cols-4 gap-1.5 text-center bg-slate-900/90 p-2.5 rounded-xl border border-slate-700/70">
+            <div>
+              <div id="picker-calc-kcal" class="font-extrabold text-sm text-emerald-400">0</div>
+              <div class="text-[10px] text-slate-400">ккал</div>
+            </div>
+            <div>
+              <div id="picker-calc-p" class="font-bold text-xs text-sky-300">0г</div>
+              <div class="text-[10px] text-slate-400">Белки</div>
+            </div>
+            <div>
+              <div id="picker-calc-c" class="font-bold text-xs text-amber-300">0г</div>
+              <div class="text-[10px] text-slate-400">Углеводы</div>
+            </div>
+            <div>
+              <div id="picker-calc-f" class="font-bold text-xs text-rose-300">0г</div>
+              <div class="text-[10px] text-slate-400">Жиры</div>
+            </div>
+          </div>
+
+          <!-- Food Rating Box -->
+          <div onclick="tapFeature('food_rating')" class="cursor-pointer bg-emerald-950/60 border border-emerald-500/40 rounded-lg p-2 text-xs text-emerald-300 flex justify-between items-center">
+            <span id="picker-food-rating">⭐ Оценка нутриентов (Food Rating)</span>
+            <span id="badge-food-rating" class="text-[10px] bg-emerald-500/20 px-1.5 py-0.5 rounded font-semibold">Открыто</span>
+          </div>
+
+          <button onclick="commitSelectedFood()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-sm transition">
+            + Записать в дневник (Eintragen)
+          </button>
+        </div>
+
+        <!-- Search Results List -->
+        <div class="space-y-2">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Продукты в базе</span>
+            <span id="search-count-label" class="text-[11px] text-slate-400"></span>
+          </div>
+          <div id="food-results-list" class="space-y-2"></div>
+        </div>
+      </div>
+
+      <!-- ================================================================== -->
+      <!-- TAB 3: FASTING (ИНТЕРВАЛЬНОЕ ГОЛОДАНИЕ — РЕАЛЬНЫЙ ТАЙМЕР В БД)     -->
+      <!-- ================================================================== -->
+      <div id="tab-fasting" class="hidden space-y-4">
+        <h2 class="text-base font-bold text-white">Интервальное голодание <span class="text-xs text-slate-400 font-normal">(Intervallfasten)</span></h2>
+
+        <!-- Protocol Selector -->
+        <div id="fasting-protocols-row" class="flex gap-1.5 text-xs overflow-x-auto hide-scrollbar pb-1"></div>
+
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-4">
+          <div class="flex justify-between items-center">
+            <span id="fasting-proto-title" class="font-bold text-sm text-slate-200">Протокол: 12:12</span>
+            <span id="fasting-active-badge" class="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-semibold">Активен</span>
+          </div>
+
+          <div class="flex flex-col items-center justify-center py-3 space-y-1">
+            <span id="fasting-live-clock" class="text-3xl font-extrabold font-mono text-sky-400">00:00:00</span>
+            <span id="fasting-goal-sub" class="text-xs text-slate-400">Цель голодания: 12 часов</span>
+          </div>
+
+          <!-- Test Time Simulation Buttons (so tester can verify 4h / 8h / 12h / 16h phases!) -->
+          <div class="space-y-1">
+            <div class="text-[10px] text-slate-400 text-center">Тест фаз голодания (перемотка времени в БД):</div>
+            <div class="grid grid-cols-5 gap-1 text-[11px]">
+              <button onclick="startFastingWithOffset(0)" class="bg-slate-700 hover:bg-slate-600 py-1 rounded">0 ч</button>
+              <button onclick="startFastingWithOffset(4.5)" class="bg-slate-700 hover:bg-slate-600 py-1 rounded">4.5 ч</button>
+              <button onclick="startFastingWithOffset(9)" class="bg-slate-700 hover:bg-slate-600 py-1 rounded">9 ч</button>
+              <button onclick="startFastingWithOffset(12.5)" class="bg-slate-700 hover:bg-slate-600 py-1 rounded">12.5 ч</button>
+              <button onclick="startFastingWithOffset(16.5)" class="bg-slate-700 hover:bg-slate-600 py-1 rounded">16.5 ч</button>
+            </div>
+          </div>
+
+          <!-- Dynamic Phases List -->
+          <div id="fasting-phases-list" class="space-y-2 text-xs pt-2 border-t border-slate-700"></div>
+
+          <div class="flex gap-2">
+            <button onclick="startFastingWithOffset(0)" class="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs">
+              ▶ Начать заново
+            </button>
+            <button onclick="stopFastingTimer()" class="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold rounded-xl text-xs">
+              ⏹ Завершить
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================== -->
+      <!-- TAB 4: RECIPES (РЕЦЕПТЫ ИЗ БАЗЫ SQLITE)                            -->
+      <!-- ================================================================== -->
+      <div id="tab-recipes" class="hidden space-y-3.5">
+        <h2 class="text-base font-bold text-white">Рецепты <span class="text-xs text-slate-400 font-normal">(Gesunde Rezepte)</span></h2>
+
+        <!-- Calorie Filters -->
+        <div class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1 text-xs">
+          <button onclick="loadRecipes(null)" id="rec-filter-all" class="bg-emerald-500 text-slate-950 font-bold px-3 py-1 rounded-full whitespace-nowrap">Все</button>
+          <button onclick="loadRecipes(300)" id="rec-filter-300" class="bg-slate-800 text-slate-300 px-3 py-1 rounded-full whitespace-nowrap">до 300 ккал</button>
+          <button onclick="loadRecipes(400)" id="rec-filter-400" class="bg-slate-800 text-slate-300 px-3 py-1 rounded-full whitespace-nowrap">до 400 ккал</button>
+          <button onclick="loadRecipes(600)" id="rec-filter-600" class="bg-slate-800 text-slate-300 px-3 py-1 rounded-full whitespace-nowrap">до 600 ккал</button>
+        </div>
+
+        <div id="recipes-container" class="space-y-3"></div>
+      </div>
+
+      <!-- ================================================================== -->
+      <!-- TAB 5: PROFILE, CALCULATOR & DOCTOR LLM                            -->
+      <!-- ================================================================== -->
+      <div id="tab-profile" class="hidden space-y-4">
+        <h2 class="text-base font-bold text-white">Профиль, калькулятор целей и Doctor LLM</h2>
+
+        <!-- Editable Profile & Mifflin-St Jeor + DGE Calculator -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
+          <div class="font-bold text-sm text-slate-200">Мои параметры (Формула Mifflin-St Jeor + DGE)</div>
+
+          <div class="grid grid-cols-2 gap-2.5 text-xs">
+            <div>
+              <label class="text-slate-400 block mb-1">Пол (Geschlecht)</label>
+              <select id="prof-gender" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white">
+                <option value="male">Мужской (Mann)</option>
+                <option value="female">Женский (Frau)</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-slate-400 block mb-1">Дата рождения</label>
+              <input id="prof-birthdate" type="date" value="1969-04-17" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white" />
+            </div>
+            <div>
+              <label class="text-slate-400 block mb-1">Рост (см)</label>
+              <input id="prof-height" type="number" value="170" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white" />
+            </div>
+            <div>
+              <label class="text-slate-400 block mb-1">Текущий вес (кг)</label>
+              <input id="prof-weight" type="number" step="0.1" value="75.0" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white" />
+            </div>
+            <div>
+              <label class="text-slate-400 block mb-1">Целевой вес (кг)</label>
+              <input id="prof-target-weight" type="number" step="0.1" value="74.0" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white" />
+            </div>
+            <div>
+              <label class="text-slate-400 block mb-1">Активность (PAL)</label>
+              <select id="prof-activity" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white">
+                <option value="sedentary">Низкая (1.25)</option>
+                <option value="lightly_active">Лёгкая (1.40)</option>
+                <option value="moderately_active" selected>Средняя (1.55)</option>
+                <option value="very_active">Высокая (1.725)</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-slate-400 block mb-1">Схема БЖУ (Diättyp)</label>
+              <select id="prof-diet" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white">
+                <option value="classic">Классика (25%Б / 45%У / 30%Ж)</option>
+                <option value="maintain_default">Баланс (20%Б / 50%У / 30%Ж)</option>
+                <option value="high_protein">Высокобелковая (35%Б / 35%У / 30%Ж)</option>
+                <option value="low_carb">Low-Carb (30%Б / 25%У / 45%Ж)</option>
+                <option value="keto">Кето (25%Б / 5%У / 70%Ж)</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-slate-400 block mb-1">Буфер выходных</label>
+              <select id="prof-weekend" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white">
+                <option value="none">Выключен</option>
+                <option value="sat_sun">Сб + Вс (+12% ккал)</option>
+                <option value="fri_sat_sun">Пт + Сб + Вс (+12% ккал)</option>
+              </select>
+            </div>
+          </div>
+
+          <button onclick="saveProfileAndRecalculate()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs transition">
+            💾 Пересчитать норму и сохранить в БД
+          </button>
+        </div>
+
+        <!-- Doctor LLM Clinical Review Card -->
+        <div class="bg-slate-800 border border-purple-500/50 rounded-2xl p-4 space-y-3">
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-sm text-purple-200">🩺 Клинический разбор (Doctor LLM)</span>
+            <span class="text-[10px] bg-purple-900/60 text-purple-300 px-2 py-0.5 rounded font-bold">Gemini 3.1 Pro</span>
+          </div>
+          <p class="text-xs text-slate-300">Отправляет ваш реальный дневник за сегодня врачу-диетологу ИИ для разбора БЖУ и микронутриентов.</p>
+          <input id="doctor-lab-input" type="text" placeholder="Доп. контекст (напр.: усталость вечером, ферритин 25)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white" />
+          <button onclick="runDoctorClinicalReview()" id="btn-run-doctor" class="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition">
+            Запустить клинический разбор рациона
+          </button>
+          <div id="doctor-result-box" class="hidden bg-slate-900 border border-purple-500/40 rounded-xl p-3 text-xs text-slate-200 whitespace-pre-line leading-relaxed"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Navigation Bar (All 5 Tabs) -->
+    <div class="absolute bottom-0 left-0 right-0 h-16 bg-slate-950 border-t border-slate-800 flex justify-around items-center px-2 select-none">
+      <button onclick="switchTab('diary')" id="nav-diary" class="nav-btn flex flex-col items-center text-emerald-400">
+        <span class="text-base">📖</span>
+        <span class="text-[10px] font-bold">Дневник</span>
+      </button>
+      <button onclick="switchTab('add')" id="nav-add" class="nav-btn flex flex-col items-center text-slate-400 hover:text-slate-200">
+        <span class="text-base">➕</span>
+        <span class="text-[10px] font-bold">+ Еда</span>
+      </button>
+      <button onclick="switchTab('fasting')" id="nav-fasting" class="nav-btn flex flex-col items-center text-slate-400 hover:text-slate-200">
+        <span class="text-base">⏱️</span>
+        <span class="text-[10px] font-bold">Фастинг</span>
+      </button>
+      <button onclick="switchTab('recipes')" id="nav-recipes" class="nav-btn flex flex-col items-center text-slate-400 hover:text-slate-200">
+        <span class="text-base">🥗</span>
+        <span class="text-[10px] font-bold">Рецепты</span>
+      </button>
+      <button onclick="switchTab('profile')" id="nav-profile" class="nav-btn flex flex-col items-center text-slate-400 hover:text-slate-200">
+        <span class="text-base">👤</span>
+        <span class="text-[10px] font-bold">Профиль</span>
+      </button>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- MODAL 1: REAL BARCODE SCANNER (CAMERA + EAN INPUT + PRESETS)       -->
+    <!-- ================================================================== -->
+    <div id="modal-barcode" class="hidden absolute inset-0 bg-black/95 z-50 p-5 flex flex-col justify-between overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <h3 class="text-base font-extrabold text-white">🔍 Сканер штрихкодов (EAN-13)</h3>
+        <button onclick="closeBarcodeModal()" class="text-xs text-slate-400 hover:text-white">✕ Закрыть</button>
+      </div>
+
+      <div class="space-y-3 my-auto">
+        <!-- Live Camera Viewfinder -->
+        <div id="barcode-reader-box" class="w-full bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden min-h-[180px] flex items-center justify-center text-xs text-slate-400">
+          Нажмите «Включить камеру» или введите штрихкод ниже
+        </div>
+        <button onclick="startCameraBarcodeScanner()" class="w-full py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl text-xs">
+          📷 Включить камеру для сканирования
+        </button>
+
+        <!-- Manual EAN Input -->
+        <div class="flex gap-1.5 pt-2">
+          <input id="barcode-manual-input" type="text" placeholder="Введите штрихкод (напр. 4388840215836)" class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-mono" />
+          <button onclick="lookupBarcodeByInput()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 rounded-xl text-xs">
+            Найти
+          </button>
+        </div>
+
+        <!-- Real German Supermarket Barcodes for Quick Testing -->
+        <div class="space-y-1.5 pt-2 border-t border-slate-800">
+          <div class="text-[11px] text-slate-400">Реальные немецкие штрихкоды для проверки:</div>
+          <div class="grid grid-cols-1 gap-1.5 text-xs">
+            <button onclick="lookupBarcode('4388840215836')" class="text-left bg-slate-800 hover:bg-slate-700 p-2 rounded-lg flex justify-between">
+              <span>REWE Beste Wahl Skyr Natur</span>
+              <span class="font-mono text-sky-400">4388840215836</span>
+            </button>
+            <button onclick="lookupBarcode('4311501491829')" class="text-left bg-slate-800 hover:bg-slate-700 p-2 rounded-lg flex justify-between">
+              <span>EDEKA Bio Haferflocken</span>
+              <span class="font-mono text-sky-400">4311501491829</span>
+            </button>
+            <button onclick="lookupBarcode('20636080')" class="text-left bg-slate-800 hover:bg-slate-700 p-2 rounded-lg flex justify-between">
+              <span>Lidl Milbona High Protein Pudding</span>
+              <span class="font-mono text-sky-400">20636080</span>
+            </button>
+            <button onclick="lookupBarcode('4058172924811')" class="text-left bg-slate-800 hover:bg-slate-700 p-2 rounded-lg flex justify-between">
+              <span>dmBio Protein Riegel Kakao</span>
+              <span class="font-mono text-sky-400">4058172924811</span>
+            </button>
+            <button onclick="lookupBarcode('3017620422003')" class="text-left bg-slate-800 hover:bg-slate-700 p-2 rounded-lg flex justify-between">
+              <span>Nutella (Живой запрос в Open Food Facts)</span>
+              <span class="font-mono text-amber-400">3017620422003</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="text-[10px] text-slate-500 text-center">Подключено к локальной БД SQLite + Open Food Facts API v2</div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- MODAL 2: REAL AI PHOTO & VOICE/TEXT SCANNER (GEMINI 3.5 FLASH)     -->
+    <!-- ================================================================== -->
+    <div id="modal-ai-scanner" class="hidden absolute inset-0 bg-black/95 z-50 p-5 flex flex-col justify-between overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <h3 class="text-base font-extrabold text-white">📸 AI-Анализатор блюда (Gemini 3.5 Flash)</h3>
+        <button onclick="closeAiScannerModal()" class="text-xs text-slate-400 hover:text-white">✕ Закрыть</button>
+      </div>
+
+      <div class="space-y-3 my-auto py-2">
+        <!-- Real Photo File / Camera Input -->
+        <label class="block cursor-pointer bg-slate-800 hover:bg-slate-700 border-2 border-dashed border-emerald-500/60 rounded-2xl p-4 text-center space-y-1">
+          <div class="text-2xl">📷</div>
+          <div class="text-xs font-bold text-emerald-300">Сфотографировать тарелку или выбрать фото</div>
+          <div id="ai-photo-filename" class="text-[11px] text-slate-400">На iPhone/Android откроется камера</div>
+          <input id="ai-photo-input" type="file" accept="image/*" capture="environment" onchange="previewAiPhoto(this)" class="hidden" />
+        </label>
+
+        <img id="ai-photo-preview" class="hidden w-full h-36 object-cover rounded-xl border border-slate-700" />
+
+        <!-- Text / Voice Description Input -->
+        <div>
+          <label class="text-xs text-slate-300 block mb-1">Или опишите словами / голосом, что вы съели:</label>
+          <textarea
+            id="ai-dish-hint"
+            rows="2"
+            placeholder="Например: 2 яйца, авокадо тост и капучино (или: куриная грудка с рисом и салатом)"
+            class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white"
+          ></textarea>
+        </div>
+
+        <button onclick="submitAiAnalysis()" id="btn-submit-ai" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl text-xs">
+          ⚡ Распознать через Gemini 3.5 Flash
+        </button>
+
+        <!-- Recognized Items Output -->
+        <div id="ai-results-container" class="hidden space-y-2 pt-2 border-t border-slate-800">
+          <div id="ai-summary-text" class="text-xs text-emerald-300 font-semibold"></div>
+          <div id="ai-items-list" class="space-y-1.5 max-h-44 overflow-y-auto"></div>
+          <button onclick="addAllAiItemsToDiary()" class="w-full py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-xl text-xs">
+            + Добавить все распознанные блюда в дневник
+          </button>
+        </div>
+      </div>
+
+      <div class="text-[10px] text-slate-500 text-center">Защищено Token Sentinel (guard_prompt 15 000 токенов)</div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- MODAL 3: INSTALL ON IPHONE & ANDROID OVER WI-FI                    -->
+    <!-- ================================================================== -->
+    <div id="modal-install" class="hidden absolute inset-0 bg-black/95 z-50 p-6 flex flex-col justify-center space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h3 class="text-base font-black text-white">📲 Запуск на вашем iPhone и Android</h3>
+        <button onclick="closeInstallModal()" class="text-xs text-slate-400 hover:text-white">✕</button>
+      </div>
+
+      <div class="text-xs text-slate-300 space-y-2">
+        <p>Ваш сервер запущен в вашей домашней сети Wi-Fi. Откройте камеру телефона и наведите на QR-код (или введите адрес в браузере телефона):</p>
+        <div class="bg-white p-3 rounded-2xl w-44 h-44 mx-auto flex items-center justify-center">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=http://192.168.178.100:8000/app" alt="QR Code" class="w-36 h-36" />
+        </div>
+        <div class="text-center font-mono font-bold text-sm text-emerald-400 bg-slate-900 py-2 rounded-xl border border-slate-700">
+          http://192.168.178.100:8000/app
+        </div>
+        <div class="space-y-1 text-[11px] text-slate-400 pt-1">
+          <div>• <b>На iPhone (Safari):</b> нажмите кнопку «Поделиться» (квадрат со стрелкой вверх) → <b>«На экран "Домой"» (Zum Home-Bildschirm)</b>. Приложение появится как иконка на айфоне!</div>
+          <div>• <b>На Android (Chrome):</b> нажмите меню (⋮) → <b>«Установить приложение»</b>.</div>
+        </div>
+      </div>
+
+      <button onclick="closeInstallModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs">
+        Понятно
+      </button>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- MODAL 4: PAYWALL & USAGE ANALYTICS                                 -->
+    <!-- ================================================================== -->
+    <div id="modal-paywall" class="hidden absolute inset-0 bg-black/90 backdrop-blur-sm z-50 p-6 flex flex-col justify-center space-y-4">
+      <button onclick="closePaywall()" class="self-end text-xs text-slate-400 hover:text-white">✕ Пропустить (Skip)</button>
+      <div class="text-center space-y-1">
+        <h3 class="text-xl font-black text-white">YAZIO-Next PRO</h3>
+        <p class="text-xs text-slate-300">Функция закрыта в режиме Production. Активируйте PRO или переключите тумблер сверху в «🟢 Бета».</p>
+      </div>
+      <div class="bg-slate-800 border-2 border-emerald-500 rounded-xl p-4 text-center space-y-1">
+        <div class="text-base font-bold text-white">12 месяцев PRO</div>
+        <div class="text-sm font-extrabold text-emerald-400">29,99 € / год (2,49 € / мес)</div>
+      </div>
+      <button onclick="activatePro()" class="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl text-sm">
+        Активировать тестовый PRO в БД
+      </button>
+    </div>
+
+    <div id="modal-usage" class="hidden absolute inset-0 bg-black/95 z-50 p-6 flex flex-col justify-center space-y-3">
+      <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+        <h3 class="text-base font-black text-white">📊 Реальная статистика из БД (SQLite)</h3>
+        <button onclick="closeUsageModal()" class="text-xs text-slate-400 hover:text-white">✕</button>
+      </div>
+      <div id="usage-list" class="max-h-96 overflow-y-auto space-y-2 text-xs"></div>
+      <button onclick="closeUsageModal()" class="w-full py-2 bg-slate-800 text-slate-200 font-bold rounded-xl text-xs">Закрыть</button>
+    </div>
+
+  </div>
+
+  <script>
+    // Automatically use the server we were loaded from, or fallback to localhost:8000
+    const API_BASE = (window.location.protocol.startsWith('http'))
+      ? window.location.origin
+      : 'http://127.0.0.1:8000';
+
+    const USER_ID = 1;
+    let accessMode = 'beta_all_open';
+    let currentDayOffset = 0;
+    let currentMeal = 'breakfast';
+    let selectedProduct = null;
+    let lastAiItems = [];
+    let uploadedImageBase64 = null;
+    let html5QrScanner = null;
+    let fastingState = { is_active: true, elapsed_seconds: 0, fasting_hours: 12, protocol_id: '12_12' };
+
+    function getIsoDateForOffset(offset) {
+      const d = new Date();
+      d.setDate(d.getDate() + offset);
+      return d.toISOString().split('T')[0];
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('beta-toast');
+      document.getElementById('beta-toast-text').innerText = msg;
+      toast.classList.remove('hidden');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(hideToast, 3200);
+    }
+
+    function hideToast() {
+      document.getElementById('beta-toast').classList.add('hidden');
+    }
+
+    async function apiFetch(path, options = {}) {
+      const res = await fetch(API_BASE + path, {
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+        ...options,
+      });
+      if (res.status === 402) {
+        openPaywall();
+        throw new Error('Paywall required');
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(err.detail || 'API Error');
+      }
+      return res.json();
+    }
+
+    // ------------------------------------------------------------------
+    // 1. DIARY LOADING & ACTIONS (100% SQLite backed)
+    // ------------------------------------------------------------------
+    async function loadDiary() {
+      const isoDate = getIsoDateForOffset(currentDayOffset);
+      document.getElementById('diary-date-iso').innerText = isoDate;
+      try {
+        const data = await apiFetch(`/api/diary/${USER_ID}?log_date=${isoDate}`);
+        document.getElementById('calorie-remaining').innerText = data.summary.remaining_kcal.toLocaleString();
+        document.getElementById('calorie-eaten').innerText = data.summary.eaten_kcal.toLocaleString();
+        document.getElementById('calorie-goal').innerText = data.summary.daily_goal;
+
+        document.getElementById('macro-c').innerText = data.macros.carbs.eaten;
+        document.getElementById('goal-c').innerText = data.macros.carbs.goal;
+        document.getElementById('macro-p').innerText = data.macros.protein.eaten;
+        document.getElementById('goal-p').innerText = data.macros.protein.goal;
+        document.getElementById('macro-f').innerText = data.macros.fat.eaten;
+        document.getElementById('goal-f').innerText = data.macros.fat.goal;
+
+        renderMeals(data.meals, data.meal_budgets);
+        renderWaterGlasses(data.water.glasses, data.water.consumed_ml, data.water.goal_ml);
+      } catch (e) {
+        document.getElementById('api-status-badge').innerText = 'API: Ошибка';
+      }
+    }
+
+    function renderMeals(meals, budgets) {
+      const meta = [
+        { key: 'breakfast', ru: 'Завтрак', de: 'Frühstück', budget: budgets.breakfast || 551 },
+        { key: 'lunch', ru: 'Обед', de: 'Mittagessen', budget: budgets.lunch || 735 },
+        { key: 'dinner', ru: 'Ужин', de: 'Abendessen', budget: budgets.dinner || 459 },
+        { key: 'snack', ru: 'Перекусы', de: 'Snacks', budget: budgets.snacks || 92 },
+      ];
+      const container = document.getElementById('meals-container');
+      container.innerHTML = meta.map(m => {
+        const items = meals[m.key] || [];
+        const mealKcal = items.reduce((s, i) => s + i.calories_kcal, 0);
+        const rowsHtml = items.length === 0
+          ? `<div class="text-xs text-slate-500 italic">Пусто — нажмите «+ Записать»</div>`
+          : items.map(item => `
+              <div class="flex justify-between items-center py-1.5 border-t border-slate-700/60 text-xs">
+                <div>
+                  <span class="text-slate-100 font-semibold">${item.custom_name}</span>
+                  <span class="text-[10px] text-slate-400 ml-1">(${Math.round(item.amount_grams)}г • Б:${item.protein_g} У:${item.carbs_g} Ж:${item.fat_g})</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-emerald-400">${item.calories_kcal} ккал</span>
+                  <button onclick="deleteDiaryItem('${item.id}')" title="Удалить запись" class="text-slate-500 hover:text-rose-400 font-bold px-1">✕</button>
+                </div>
+              </div>
+            `).join('');
+
+        return `
+          <div class="bg-slate-800/80 border border-slate-700/50 rounded-xl p-3">
+            <div class="flex justify-between items-center mb-1.5">
+              <div>
+                <span class="font-bold text-sm text-slate-100">${m.ru} <span class="text-xs text-slate-400 font-normal">(${m.de})</span></span>
+                <span class="text-xs text-slate-400 ml-1.5">${mealKcal} / ${m.budget} ккал</span>
+              </div>
+              <button onclick="switchTab('add', '${m.key}')" class="text-xs bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg text-sky-400 font-semibold">+ Записать</button>
+            </div>
+            <div>${rowsHtml}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function deleteDiaryItem(itemId) {
+      await apiFetch(`/api/diary/item/${itemId}`, { method: 'DELETE' });
+      showToast('🗑️ Запись удалена из дневника');
+      loadDiary();
+    }
+
+    function renderWaterGlasses(filledGlasses, consumedMl, goalMl) {
+      document.getElementById('water-label').innerText = `${consumedMl} / ${goalMl} мл`;
+      const row = document.getElementById('water-glasses-row');
+      let html = '';
+      for (let i = 1; i <= 8; i++) {
+        const isFilled = i <= filledGlasses;
+        const targetVal = (i === filledGlasses) ? i - 1 : i;
+        html += `
+          <button onclick="setWaterGlasses(${targetVal})" class="p-2 ${isFilled ? 'bg-sky-600' : 'bg-slate-700'} rounded-lg text-sm transition">
+            ${isFilled ? '💧' : '🥛'}
+          </button>
+        `;
+      }
+      row.innerHTML = html;
+    }
+
+    async function setWaterGlasses(glasses) {
+      await apiFetch('/api/diary/water', {
+        method: 'PUT',
+        body: JSON.stringify({ user_id: USER_ID, log_date: getIsoDateForOffset(currentDayOffset), glasses }),
+      });
+      loadDiary();
+    }
+
+    async function saveWeightFromDiary() {
+      const val = parseFloat(document.getElementById('diary-weight-input').value) || 75.0;
+      await apiFetch('/api/diary/log-weight', {
+        method: 'POST',
+        body: JSON.stringify({ user_id: USER_ID, log_date: getIsoDateForOffset(currentDayOffset), kilograms: val }),
+      });
+      showToast(`⚖️ Вес ${val} кг сохранён в базу данных!`);
+    }
+
+    function setDayOffset(offset) {
+      currentDayOffset = offset;
+      [-1, 0, 1].forEach(o => {
+        const btn = document.getElementById('btn-day-' + o);
+        if (btn) {
+          btn.className = (o === offset)
+            ? 'px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500 text-slate-950 whitespace-nowrap'
+            : 'px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 whitespace-nowrap';
+        }
+      });
+      loadDiary();
+    }
+
+    // ------------------------------------------------------------------
+    // 2. REAL FOOD SEARCH & PORTION PICKER
+    // ------------------------------------------------------------------
+    async function performFoodSearch(useRemote = false) {
+      const q = document.getElementById('food-search-input').value.trim();
+      const listEl = document.getElementById('food-results-list');
+      if (useRemote) {
+        listEl.innerHTML = `<div class="text-xs text-sky-400 py-3 text-center">🌐 Поиск "${q}" в немецкой базе Open Food Facts...</div>`;
+      }
+      const data = await apiFetch(`/api/food/search?query=${encodeURIComponent(q)}&remote=${useRemote}&limit=25`);
+      document.getElementById('search-count-label').innerText = `Найдено: ${data.count}`;
+      if (data.items.length === 0) {
+        listEl.innerHTML = `<div class="text-xs text-slate-400 py-3 text-center">В локальной базе не найдено. Нажмите кнопку <b>«🌐 Онлайн DE»</b> справа от поиска!</div>`;
+        return;
+      }
+      listEl.innerHTML = data.items.map((item, idx) => {
+        const defGrams = item.default_serving_grams || 100;
+        const defKcal = Math.round((item.energy_kcal_100g * defGrams) / 100);
+        return `
+          <div onclick='openPortionPicker(${JSON.stringify(item).replace(/'/g, "&#39;")})' class="cursor-pointer bg-slate-800/90 border border-slate-700/60 hover:border-emerald-500/60 p-3 rounded-xl flex justify-between items-center transition">
+            <div class="pr-2">
+              <div class="font-bold text-xs text-slate-100">${item.name}</div>
+              <div class="text-[11px] text-slate-400">${item.producer ? item.producer + ' • ' : ''}${item.default_serving_label || '100г'} • на 100г: ${Math.round(item.energy_kcal_100g)} ккал (Б:${item.protein_g_100g} У:${item.carbs_g_100g} Ж:${item.fat_g_100g})</div>
+            </div>
+            <span class="font-bold text-xs text-emerald-400 shrink-0">${defKcal} ккал</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openPortionPicker(product) {
+      selectedProduct = product;
+      document.getElementById('picker-name').innerText = product.name;
+      document.getElementById('picker-producer').innerText = `${product.producer || 'Продукт'} • На 100г: ${product.energy_kcal_100g} ккал`;
+      document.getElementById('picker-grams-input').value = Math.round(product.default_serving_grams || 100);
+      recalcPickerMacros();
+      document.getElementById('portion-picker').classList.remove('hidden');
+      document.getElementById('screen-container').scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function closePortionPicker() {
+      document.getElementById('portion-picker').classList.add('hidden');
+      selectedProduct = null;
+    }
+
+    function setPickerGrams(g) {
+      document.getElementById('picker-grams-input').value = g;
+      recalcPickerMacros();
+    }
+
+    function recalcPickerMacros() {
+      if (!selectedProduct) return;
+      const g = Math.max(1, parseFloat(document.getElementById('picker-grams-input').value) || 100);
+      const ratio = g / 100.0;
+      const kcal = Math.round(selectedProduct.energy_kcal_100g * ratio);
+      const p = (selectedProduct.protein_g_100g * ratio).toFixed(1);
+      const c = (selectedProduct.carbs_g_100g * ratio).toFixed(1);
+      const f = (selectedProduct.fat_g_100g * ratio).toFixed(1);
+
+      document.getElementById('picker-calc-kcal').innerText = kcal;
+      document.getElementById('picker-calc-p').innerText = p + 'г';
+      document.getElementById('picker-calc-c').innerText = c + 'г';
+      document.getElementById('picker-calc-f').innerText = f + 'г';
+
+      // Compute realistic protein-to-calorie & sugar rating
+      const score = Math.min(10, Math.max(4.5, (selectedProduct.protein_g_100g * 0.25) + 7.2 - ((selectedProduct.sugar_g_100g || 0) * 0.12))).toFixed(1);
+      document.getElementById('picker-food-rating').innerText = `⭐ Оценка полезности (Food Rating): ${score} / 10`;
+    }
+
+    async function commitSelectedFood() {
+      if (!selectedProduct) return;
+      const g = Math.max(1, parseFloat(document.getElementById('picker-grams-input').value) || 100);
+      const ratio = g / 100.0;
+      await apiFetch('/api/diary/log-food', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: USER_ID,
+          log_date: getIsoDateForOffset(currentDayOffset),
+          meal_section: document.getElementById('meal-selector').value || currentMeal,
+          product_id: selectedProduct.product_id,
+          custom_name: selectedProduct.name,
+          serving_label: 'г',
+          amount_grams: g,
+          calories_kcal: Math.round(selectedProduct.energy_kcal_100g * ratio),
+          protein_g: Math.round(selectedProduct.protein_g_100g * ratio * 10) / 10,
+          carbs_g: Math.round(selectedProduct.carbs_g_100g * ratio * 10) / 10,
+          fat_g: Math.round(selectedProduct.fat_g_100g * ratio * 10) / 10,
+          tracking_method: 'manual',
+        }),
+      });
+      closePortionPicker();
+      showToast(`✅ Добавлено: ${selectedProduct.name} (${g}г)`);
+      switchTab('diary');
+    }
+
+    // ------------------------------------------------------------------
+    // 3. REAL BARCODE SCANNER (CAMERA + OPEN FOOD FACTS V2)
+    // ------------------------------------------------------------------
+    function openBarcodeModal() {
+      document.getElementById('modal-barcode').classList.remove('hidden');
+    }
+
+    function closeBarcodeModal() {
+      stopCameraBarcodeScanner();
+      document.getElementById('modal-barcode').classList.add('hidden');
+    }
+
+    function startCameraBarcodeScanner() {
+      const box = document.getElementById('barcode-reader-box');
+      if (typeof Html5Qrcode === 'undefined') {
+        box.innerText = 'Модуль камеры загружается... Используйте поле ввода ниже.';
+        return;
+      }
+      box.innerHTML = '<div id="qr-video-Area" class="w-full"></div>';
+      html5QrScanner = new Html5Qrcode('qr-video-Area');
+      html5QrScanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 220, height: 120 } },
+        (decodedText) => {
+          lookupBarcode(decodedText);
+        },
+        () => {}
+      ).catch(err => {
+        box.innerHTML = `<div class="p-3 text-center text-amber-300 text-xs">Доступ к видеокамере требует HTTPS или разрешения браузера. Вы можете ввести цифры штрихкода вручную ниже!</div>`;
+      });
+    }
+
+    function stopCameraBarcodeScanner() {
+      if (html5QrScanner) {
+        html5QrScanner.stop().catch(() => {});
+        html5QrScanner = null;
+      }
+    }
+
+    function lookupBarcodeByInput() {
+      const code = document.getElementById('barcode-manual-input').value.trim();
+      if (code) lookupBarcode(code);
+    }
+
+    async function lookupBarcode(code) {
+      try {
+        showToast(`🔍 Поиск штрихкода ${code}...`);
+        const res = await apiFetch(`/api/food/barcode/${encodeURIComponent(code)}?user_id=${USER_ID}`);
+        closeBarcodeModal();
+        openPortionPicker(res.product);
+        showToast(`✅ Найден товар: ${res.product.name}`);
+      } catch (e) {
+        alert(`Штрихкод ${code} не найден: ${e.message}`);
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // 4. REAL AI PHOTO & TEXT SCANNER (GEMINI 3.5 FLASH)
+    // ------------------------------------------------------------------
+    function openAiScannerModal() {
+      document.getElementById('modal-ai-scanner').classList.remove('hidden');
+    }
+
+    function closeAiScannerModal() {
+      document.getElementById('modal-ai-scanner').classList.add('hidden');
+    }
+
+    function previewAiPhoto(input) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      document.getElementById('ai-photo-filename').innerText = `Выбрано: ${file.name}`;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        uploadedImageBase64 = e.target.result;
+        const img = document.getElementById('ai-photo-preview');
+        img.src = uploadedImageBase64;
+        img.classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function submitAiAnalysis() {
+      const hint = document.getElementById('ai-dish-hint').value.trim();
+      if (!uploadedImageBase64 && !hint) {
+        alert('Пожалуйста, сделайте фото блюда или напишите текстом, что вы съели!');
+        return;
+      }
+      const btn = document.getElementById('btn-submit-ai');
+      btn.innerText = '⏳ Gemini 3.5 Flash анализирует блюдо...';
+      btn.disabled = true;
+      try {
+        const res = await apiFetch('/api/ai/scan-plate', {
+          method: 'POST',
+          body: JSON.stringify({
+            user_id: USER_ID,
+            image_base64: uploadedImageBase64 || '',
+            dish_hint: hint || 'Фото блюда',
+          }),
+        });
+        lastAiItems = res.items || [];
+        document.getElementById('ai-summary-text').innerText =
+          `${res.live_gemini ? '🤖 Gemini 3.5 Flash (Live)' : '⚡ Анализ БЖУ'}: ${res.summary_ru || 'Распознано'}`;
+        document.getElementById('ai-items-list').innerHTML = lastAiItems.map(i => `
+          <div class="bg-slate-800 border border-slate-700 p-2 rounded-lg flex justify-between items-center text-xs">
+            <div>
+              <div class="font-bold text-white">${i.name}</div>
+              <div class="text-[10px] text-slate-400">${i.grams}г • Б:${i.protein_g}г У:${i.carbs_g}г Ж:${i.fat_g}г</div>
+            </div>
+            <span class="font-bold text-emerald-400">${i.calories} ккал</span>
+          </div>
+        `).join('');
+        document.getElementById('ai-results-container').classList.remove('hidden');
+      } catch (e) {
+        if (e.message !== 'Paywall required') alert('Ошибка AI: ' + e.message);
+      } finally {
+        btn.innerText = '⚡ Распознать через Gemini 3.5 Flash';
+        btn.disabled = false;
+      }
+    }
+
+    async function addAllAiItemsToDiary() {
+      for (const item of lastAiItems) {
+        await apiFetch('/api/diary/log-food', {
+          method: 'POST',
+          body: JSON.stringify({
+            user_id: USER_ID,
+            log_date: getIsoDateForOffset(currentDayOffset),
+            meal_section: document.getElementById('meal-selector').value || currentMeal,
+            custom_name: item.name,
+            serving_label: 'г',
+            amount_grams: item.grams,
+            calories_kcal: Math.round(item.calories),
+            protein_g: item.protein_g,
+            carbs_g: item.carbs_g,
+            fat_g: item.fat_g,
+            tracking_method: 'ai_photo',
+          }),
+        });
+      }
+      closeAiScannerModal();
+      showToast(`📸 Распознанные блюда (${lastAiItems.length} шт.) записаны в дневник!`);
+      switchTab('diary');
+    }
+
+    // ------------------------------------------------------------------
+    // 5. REAL FASTING TRACKER (PERSISTED IN SQLITE)
+    // ------------------------------------------------------------------
+    async function loadFasting() {
+      const data = await apiFetch(`/api/fasting/${USER_ID}`);
+      fastingState = data;
+      document.getElementById('fasting-proto-title').innerText = `Протокол: ${data.protocol}`;
+      document.getElementById('fasting-goal-sub').innerText = `Цель голодания: ${data.fasting_hours} ч (Окно питания: ${data.eating_hours} ч)`;
+      document.getElementById('fasting-active-badge').innerText = data.is_active ? 'Идёт таймер' : 'Остановлен';
+
+      const row = document.getElementById('fasting-protocols-row');
+      row.innerHTML = data.available_protocols.map(p => `
+        <button onclick="selectFastingProtocol('${p.id}')" class="px-3 py-1.5 rounded-full font-bold whitespace-nowrap ${p.id === data.protocol_id ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-300'}">
+          ${p.label} ${p.locked ? '🔒' : ''}
+        </button>
+      `).join('');
+
+      const phaseNamesRu = {
+        4: '4 ч: Сахар в крови снизился и стабилизировался',
+        8: '8 ч: Пищеварение полностью завершено',
+        12: '12 ч: Активное расщепление жиров (Fettverbrennung)',
+        16: '16 ч: Клеточное обновление / Автофагия (Autophagie)',
+      };
+      document.getElementById('fasting-phases-list').innerHTML = data.phases.map(ph => `
+        <div class="flex items-center gap-2 ${ph.reached ? 'text-emerald-400 font-bold' : 'text-slate-500'}">
+          <span>${ph.reached ? '✅' : '⏳'}</span>
+          <span>${phaseNamesRu[ph.hour] || ph.name}</span>
+        </div>
+      `).join('');
+      renderFastingClock();
+    }
+
+    function renderFastingClock() {
+      const sec = Math.max(0, fastingState.elapsed_seconds || 0);
+      const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+      const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      document.getElementById('fasting-live-clock').innerText = `${h}:${m}:${s}`;
+    }
+
+    setInterval(() => {
+      if (fastingState.is_active) {
+        fastingState.elapsed_seconds = (fastingState.elapsed_seconds || 0) + 1;
+        renderFastingClock();
+      }
+    }, 1000);
+
+    async function selectFastingProtocol(protoId) {
+      try {
+        await apiFetch(`/api/fasting/${USER_ID}/start`, {
+          method: 'POST',
+          body: JSON.stringify({ protocol_id: protoId, elapsed_hours_offset: 0 }),
+        });
+        showToast(`⏱️ Протокол ${protoId.replace('_', ':')} запущен и сохранён в БД!`);
+        loadFasting();
+      } catch (e) {}
+    }
+
+    async function startFastingWithOffset(hoursOffset) {
+      await apiFetch(`/api/fasting/${USER_ID}/start`, {
+        method: 'POST',
+        body: JSON.stringify({ protocol_id: fastingState.protocol_id || '12_12', elapsed_hours_offset: hoursOffset }),
+      });
+      loadFasting();
+    }
+
+    async function stopFastingTimer() {
+      await apiFetch(`/api/fasting/${USER_ID}/stop`, { method: 'POST' });
+      showToast('⏹ Таймер голодания остановлен');
+      loadFasting();
+    }
+
+    // ------------------------------------------------------------------
+    // 6. REAL RECIPES CATALOG
+    // ------------------------------------------------------------------
+    async function loadRecipes(maxCal = null) {
+      const url = maxCal ? `/api/recipes?calorie_max=${maxCal}&user_id=${USER_ID}` : `/api/recipes?user_id=${USER_ID}`;
+      const data = await apiFetch(url);
+      const box = document.getElementById('recipes-container');
+      box.innerHTML = data.recipes.map(r => `
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-2.5">
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="font-bold text-sm text-white">${r.name} ${r.locked ? '🔒 PRO' : ''}</div>
+              <div class="text-xs text-slate-400">${r.description || ''}</div>
+              <div class="text-xs text-sky-400 mt-1">⏱️ ${r.prep_time_minutes} мин • ${r.calories} ккал</div>
+            </div>
+          </div>
+          <div class="text-xs text-slate-300">
+            Белки: <b>${r.protein_g}г</b> | Углеводы: <b>${r.carbs_g}г</b> | Жиры: <b>${r.fat_g}г</b>
+          </div>
+          <button onclick='logRecipeItem(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="w-full py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs">
+            + Внести порцию в дневник (${r.calories} ккал)
+          </button>
+        </div>
+      `).join('');
+    }
+
+    async function logRecipeItem(r) {
+      if (r.locked) {
+        openPaywall();
+        return;
+      }
+      await apiFetch('/api/diary/log-food', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: USER_ID,
+          log_date: getIsoDateForOffset(currentDayOffset),
+          meal_section: 'lunch',
+          custom_name: r.name,
+          serving_label: 'порция',
+          amount_grams: 300,
+          calories_kcal: r.calories,
+          protein_g: r.protein_g,
+          carbs_g: r.carbs_g,
+          fat_g: r.fat_g,
+          tracking_method: 'recipe',
+        }),
+      });
+      showToast(`🥗 Рецепт «${r.name}» добавлен в Обед!`);
+      switchTab('diary');
+    }
+
+    // ------------------------------------------------------------------
+    // 7. REAL PROFILE, GOAL CALCULATOR & DOCTOR LLM
+    // ------------------------------------------------------------------
+    async function loadProfile() {
+      const data = await apiFetch(`/api/profile/${USER_ID}`);
+      const u = data.user;
+      document.getElementById('prof-gender').value = u.gender || 'male';
+      document.getElementById('prof-birthdate').value = u.birth_date || '1969-04-17';
+      document.getElementById('prof-height').value = u.height_cm || 170;
+      document.getElementById('prof-weight').value = u.current_weight_kg || 75.0;
+      document.getElementById('prof-target-weight').value = u.target_weight_kg || 74.0;
+      document.getElementById('prof-activity').value = u.activity_degree || 'moderately_active';
+      document.getElementById('prof-diet').value = u.diet_type || 'classic';
+      document.getElementById('prof-weekend').value = u.weekend_buffer_mode || 'none';
+      document.getElementById('diary-weight-input').value = u.current_weight_kg || 75.0;
+    }
+
+    async function saveProfileAndRecalculate() {
+      try {
+        const res = await apiFetch(`/api/profile/${USER_ID}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            gender: document.getElementById('prof-gender').value,
+            birth_date: document.getElementById('prof-birthdate').value,
+            height_cm: parseFloat(document.getElementById('prof-height').value) || 170,
+            current_weight_kg: parseFloat(document.getElementById('prof-weight').value) || 75,
+            target_weight_kg: parseFloat(document.getElementById('prof-target-weight').value) || 74,
+            activity_degree: document.getElementById('prof-activity').value,
+            diet_type: document.getElementById('prof-diet').value,
+            weekend_buffer_mode: document.getElementById('prof-weekend').value,
+            weekly_rate_kg: 0.5,
+          }),
+        });
+        showToast(`✅ Новая норма: ${res.daily_calorie_goal} ккал (Б:${res.macros.protein_g}г У:${res.macros.carbs_g}г Ж:${res.macros.fats_g}г)`);
+        loadDiary();
+      } catch (e) {}
+    }
+
+    async function runDoctorClinicalReview() {
+      const btn = document.getElementById('btn-run-doctor');
+      const box = document.getElementById('doctor-result-box');
+      btn.innerText = '⏳ Doctor LLM анализирует ваш рацион...';
+      btn.disabled = true;
+      try {
+        const diary = await apiFetch(`/api/diary/${USER_ID}?log_date=${getIsoDateForOffset(currentDayOffset)}`);
+        const summaryStr = `Съедено: ${diary.summary.eaten_kcal} из ${diary.summary.daily_goal} ккал. Белки: ${diary.macros.protein.eaten}/${diary.macros.protein.goal}г, Углеводы: ${diary.macros.carbs.eaten}/${diary.macros.carbs.goal}г, Жиры: ${diary.macros.fat.eaten}/${diary.macros.fat.goal}г. Вода: ${diary.water.consumed_ml} мл.`;
+        const labs = document.getElementById('doctor-lab-input').value.trim();
+
+        const res = await apiFetch('/api/ai/clinical-review', {
+          method: 'POST',
+          body: JSON.stringify({ user_id: USER_ID, weekly_summary: summaryStr, lab_markers: labs || null }),
+        });
+        box.innerText = res.clinical_insight;
+        box.classList.remove('hidden');
+      } catch (e) {
+        if (e.message !== 'Paywall required') alert('Ошибка: ' + e.message);
+      } finally {
+        btn.innerText = 'Запустить клинический разбор рациона';
+        btn.disabled = false;
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // 8. ENTITLEMENTS, MODE SWITCHER & ANALYTICS
+    // ------------------------------------------------------------------
+    async function syncEntitlements() {
+      try {
+        const snap = await apiFetch(`/api/entitlements/${USER_ID}`);
+        accessMode = snap.mode;
+        renderModeButton();
+      } catch (e) {}
+    }
+
+    function renderModeButton() {
+      const lbl = document.getElementById('access-mode-label');
+      const btn = document.getElementById('btn-access-mode');
+      if (accessMode === 'beta_all_open') {
+        lbl.innerText = '🟢 Бета (Всё открыто)';
+        btn.className = 'px-2 py-1 rounded-lg font-bold text-[11px] bg-emerald-950 border border-emerald-500 text-emerald-300 transition';
+      } else {
+        lbl.innerText = '🔒 Production (Замки)';
+        btn.className = 'px-2 py-1 rounded-lg font-bold text-[11px] bg-amber-950 border border-amber-500 text-amber-300 transition';
+      }
+    }
+
+    async function toggleAccessMode() {
+      const nextMode = (accessMode === 'beta_all_open') ? 'production' : 'beta_all_open';
+      await apiFetch('/api/admin/paywall-config/mode', {
+        method: 'PUT',
+        headers: { 'X-Admin-Token': 'dev-local-token' },
+        body: JSON.stringify({ mode: nextMode }),
+      });
+      accessMode = nextMode;
+      renderModeButton();
+      showToast(accessMode === 'beta_all_open' ? '🟢 Включён режим Бета: всё открыто!' : '🔒 Включён режим Production: замки активны!');
+      loadFasting();
+      loadRecipes();
+    }
+
+    async function tapFeature(featureKey) {
+      try {
+        const res = await apiFetch(`/api/entitlements/${USER_ID}/check`, {
+          method: 'POST',
+          body: JSON.stringify({ feature_key: featureKey, consume: false }),
+        });
+        if (!res.allowed) {
+          openPaywall();
+        } else {
+          showToast(`✅ Доступ разрешён (${res.reason}). Событие записано в БД.`);
+        }
+      } catch (e) {}
+    }
+
+    async function openUsageModal() {
+      const data = await apiFetch('/api/admin/feature-usage', {
+        headers: { 'X-Admin-Token': 'dev-local-token' },
+      });
+      const list = document.getElementById('usage-list');
+      if (!data.features || data.features.length === 0) {
+        list.innerHTML = '<div class="text-slate-400">Пока нет событий. Покликайте функции в приложении!</div>';
+      } else {
+        list.innerHTML = data.features.map(f => `
+          <div class="flex justify-between items-center bg-slate-800 p-2.5 rounded-xl border border-slate-700">
+            <div>
+              <div class="font-bold text-white">${f.name_ru}</div>
+              <div class="text-[10px] text-slate-400">Ключ: ${f.feature_key} • Тариф: ${f.current_tier}</div>
+            </div>
+            <div class="text-right">
+              <div class="font-extrabold text-emerald-400">${f.total_events} кликов</div>
+              <div class="text-[10px] text-slate-400">Отказов: ${f.blocked_events}</div>
+            </div>
+          </div>
+        `).join('');
+      }
+      document.getElementById('modal-usage').classList.remove('hidden');
+    }
+
+    function closeUsageModal() { document.getElementById('modal-usage').classList.add('hidden'); }
+    function openInstallModal() { document.getElementById('modal-install').classList.remove('hidden'); }
+    function closeInstallModal() { document.getElementById('modal-install').classList.add('hidden'); }
+    function openPaywall() { document.getElementById('modal-paywall').classList.remove('hidden'); }
+    function closePaywall() { document.getElementById('modal-paywall').classList.add('hidden'); }
+
+    async function activatePro() {
+      await apiFetch(`/api/admin/users/${USER_ID}/premium`, {
+        method: 'PUT',
+        headers: { 'X-Admin-Token': 'dev-local-token' },
+        body: JSON.stringify({ premium_type: 'pro_annual' }),
+      });
+      closePaywall();
+      showToast('🎉 PRO-подписка активирована в базе данных!');
+      loadFasting();
+      loadRecipes();
+    }
+
+    function switchTab(tabId, meal = null) {
+      ['diary', 'add', 'fasting', 'recipes', 'profile'].forEach(t => {
+        document.getElementById('tab-' + t).classList.add('hidden');
+        const nav = document.getElementById('nav-' + t);
+        nav.classList.remove('text-emerald-400');
+        nav.classList.add('text-slate-400');
+      });
+      document.getElementById('tab-' + tabId).classList.remove('hidden');
+      const activeNav = document.getElementById('nav-' + tabId);
+      activeNav.classList.remove('text-slate-400');
+      activeNav.classList.add('text-emerald-400');
+
+      if (meal) {
+        currentMeal = meal;
+        document.getElementById('meal-selector').value = meal;
+      }
+      if (tabId === 'diary') loadDiary();
+      if (tabId === 'add') performFoodSearch(false);
+      if (tabId === 'fasting') loadFasting();
+      if (tabId === 'recipes') loadRecipes();
+      if (tabId === 'profile') loadProfile();
+    }
+
+    // Initial boot
+    window.addEventListener('DOMContentLoaded', () => {
+      syncEntitlements();
+      loadDiary();
+      loadProfile();
+    });
+  </script>
+</body>
+</html>
