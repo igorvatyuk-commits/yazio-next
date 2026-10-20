@@ -14,8 +14,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -32,18 +30,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew :app:assembleDebug --no-daemon --stacktrace 2>&1 | tee ../gradle_build.log
-
-      - name: Record Diagnostic Files
-        if: always()
-        run: |
-          find . -maxdepth 6 > all_files.txt || true
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -B build-debug
-          git add -f gradle_build.log all_files.txt
-          git commit -m "chore: save build log and file tree" || true
-          git push -f origin build-debug || true
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
       - name: Prepare APK Asset
         run: |
