@@ -33,6 +33,7 @@ from app.services.ai_nutrition import (
     FLASH_MODEL,
     PRO_DOCTOR_MODEL,
 )
+from app.services.review_analyzer import ReviewAnalyzerService
 from app.services.entitlements import (
     EntitlementService,
     InvalidConfigError,
@@ -59,6 +60,7 @@ app.add_middleware(
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "yazio_next.db")
 food_service = FoodDatabaseService()
 ai_service = AINutritionService()
+review_service = ReviewAnalyzerService()
 entitlements = EntitlementService(db_path=DB_PATH)
 
 # Admin token protects the paywall control endpoints. MUST be set via env on the server.
@@ -250,7 +252,39 @@ def health_check():
         "version": "1.0.0",
         "timestamp": datetime.utcnow().isoformat(),
         "database": "sqlite_ready",
+        "review_analyzer": "typesafe_jev_ready" if review_service.api_key else "missing_key",
     }
+
+
+# ---------------------------------------------------------------------------
+# 1.1 REVIEW & FEEDBACK ANALYSIS ENGINE (TypeSafe AI Jev System One)
+# ---------------------------------------------------------------------------
+class ReviewAnalyzeRequest(BaseModel):
+    review: str = Field(..., example="Сканер штрихкодов в магазине Lidl работает отлично!")
+
+
+class BatchReviewAnalyzeRequest(BaseModel):
+    reviews: List[str] = Field(..., example=["Кнопка не нажимается", "Отличное приложение"])
+
+
+@app.post("/api/reviews/analyze")
+def analyze_review_endpoint(req: ReviewAnalyzeRequest):
+    """Analyzes a single user review or tester feedback using TypeSafe AI Jev."""
+    try:
+        return review_service.analyze_review(req.review)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/reviews/batch-analyze")
+def batch_analyze_reviews_endpoint(req: BatchReviewAnalyzeRequest):
+    """Analyzes a list of user reviews in bulk."""
+    try:
+        return review_service.batch_analyze(req.reviews)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ---------------------------------------------------------------------------
